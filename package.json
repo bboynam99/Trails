@@ -1,0 +1,15 @@
+{
+  "name": "tr0n.io",
+  "version": "0.1.0",
+  "description": "tr0n.io is the next gen browser game we've all be waiting for.",
+  "main": "server/server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/server.js"
+  },
+  "author": "JN Blanchet",
+  "dependencies": {
+    "express": "^4.13.0",
+    "socket.io": "^1.3.5"
+  }
+}

@@ -1,0 +1,38 @@
+TODO LIST:
+ - players should die when they hit a wall
+ - server should know the player's trail. when a player dies, the trail disapears
+ - player disconnect = player dead.
+ - players should die when they exit the map.
+ - show player names
+ 
+
+ - health bar
+ - xp bar
+ - display name and level
+ 
+ - spawn little xp bonuses on the map
+ - when you kill someone, you gain some of his xp
+ 
+ - attribute system
+ 
+ - skill system
+
+
+skill ideas:
+defensive +1 hp
+	tier 1: metal plating (+1hp per defensive stat)
+
+ - plasma shield invicibility / destroys everything. 1 charge, 10 sec recharge
+ - repair (restores hp over time)
+
+offsensive:
+ - mines
+ - missles (blows up players and walls AoE)
+
+utility:
+ - blink (teleport forward)
+ - ghost mode (you can go through wall for a short time)
+ - recall (activate once to set a position, twice to teleport to that position (with short invisibility)
+
+
+
