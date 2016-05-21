@@ -11,6 +11,7 @@ Game.prototype.handleNetwork = function(socket) {
 		initBoard(board.boardW,board.boardH);
 		player = newPlayer;
 		player['name'] = playerName; // in case myNameIs hasn't registered yet
+		colors = [player.hue];
 		gameOver = false;
 		tick();
 	});
@@ -21,10 +22,28 @@ Game.prototype.handleNetwork = function(socket) {
 				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0];
 			}
 		}
+		colors = newBoard.colors;
 	});
 	
 	socket.on('updatePlayers', function (updatedPlayers) {
+		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
+		updatedPlayers.forEach( function(p) {
+			for ( var i=0; i < otherPlayers.length; i++ ) {
+				var o = otherPlayers[i];
+				if (o.name === p.name && o.hue === p.hue) { // is it same dude?
+					if(o.dx == p.dx && o.dy == p.dy) { // if the direction hasn't changed
+						if(Math.abs(o.x - p.x) + Math.abs(o.y - p.y) < (Math.abs(o.dx) + Math.abs(o.dy)) * o.velocity * 0.1) {
+							// keep the old values if the delta is small (to avoid jitter)
+							p.x = otherPlayers[i].x;
+							p.y = otherPlayers[i].y;
+						}
+					}
+					break;
+				}
+			}
+		});
 		otherPlayers = updatedPlayers;
+		
 	});
 	
 	socket.on('playerDied', function () {
@@ -80,17 +99,6 @@ Game.prototype.handleGraphics = function(gfx) {
 		otherPlayers.forEach( function(o) {
 			drawPlayer(gfx, o);
 		});
-	
-	/*
-	// this is a draw text example
-	gfx.fillStyle = '#2ecc71';
-	gfx.strokeStyle = '#27ae60';
-	gfx.font = 'bold 50px Verdana';
-	gfx.textAlign = 'center';
-	gfx.lineWidth = 2;
-	gfx.fillText('Now playing...', screenWidth / 2, screenHeight / 2);
-	gfx.strokeText('Now playing...', screenWidth / 2, screenHeight / 2);
-	*/
 }
 
 //
@@ -113,7 +121,7 @@ function initBoard(H,W){
 	for (var i=0;i<W;i++) {
 		board.isBloc[i] = new Array(H);
 		for (var j=0;j<H;j++) {
-			board.isBloc[i][j] = false;
+			board.isBloc[i][j] = EMPTY_BLOC;
 		}
 	}
 }
@@ -125,6 +133,10 @@ var gameOver = false;
 var HALF_BLOC_SIZE_DISPLAY = 25; // the left and right padding in px when drawing a bloc
 var BLOC_TO_PIXELS = 50; // the size of a game bloc
 var BLOC_COLOR = '#777';
+var EMPTY_BLOC = -1;
+var SIDE_WALL = -2;
+
+var colors = []; // not a constant, but contains all colors to be drawn. sent by server.
 
 //
 /** Game logic helpers **/
@@ -173,15 +185,22 @@ function changePlayerSpeed(x,y) {
 	socket.emit('directionChange',{dx:player.dx, dy:player.dy});
 }
 
-// player position update
+// player position update. returns true if the bloc has changed.
 function movePlayer(p, dt) {
 	p.x += p.dx * p.velocity * dt;
 	p.y += p.dy * p.velocity * dt;
 	var squareX = Math.round(p.x - p.dx*.5), squareY = Math.round(p.y - p.dy*.5);
 	squareX = Math.min(Math.max(squareX,0),board.W-1);
 	squareY = Math.min(Math.max(squareY,0),board.H-1);
-	var value = board.isBloc[squareX][squareY];
-	board.isBloc[squareX][squareY] = true;
+	board.isBloc[squareX][squareY] = p.hue;
+		
+	// check if it's a new value
+	var value = false;
+	if(p.lastPos && (p.lastPos[0] != squareX || p.lastPos[1] != squareY)) {
+		value = true;
+	}
+	p.lastPos = [squareX, squareY];
+	
 	return value;
 }
 
@@ -208,14 +227,8 @@ function drawPlayer(gfx, p){
 	gfx.fillText(p.name, coords[0], coords[1]);
 	gfx.strokeText(p.name, coords[0], coords[1]);
 }
-function drawBloc(gfx, x, y){
-	var coords = getBlocDrawCoordinates(x,y,HALF_BLOC_SIZE_DISPLAY);
-	gfx.fillRect(coords[0],coords[1],coords[2],coords[3]);
-}
 
 function drawBoard(gfx){
-	// set brush color
-	gfx.fillStyle = BLOC_COLOR;
 	// figure out how much can be seen by the player
 	LosW = screenWidth / 2 / BLOC_TO_PIXELS;
 	LosH = screenHeight / 2 / BLOC_TO_PIXELS;
@@ -224,14 +237,31 @@ function drawBoard(gfx){
 	LosY0 = Math.round(Math.max(player.y - LosH,0));
 	LosY1 = Math.round(Math.min(player.y + LosH, board.H-1));
 	
-	for (var i=LosX0;i<=LosX1;i++) {
-		for (var j=LosY0;j<=LosY1;j++) {
-			if (board.isBloc[i][j])
-				drawBloc(gfx, i, j);
+	for (var c=-1; c < colors.length; c++) {
+		// set brush color and target id
+		var targetC;
+		if (c == -1) { // first loop is for edges
+			targetC = SIDE_WALL;
+			gfx.fillStyle = BLOC_COLOR;
+		} else {
+			targetC = colors[c];
+			gfx.fillStyle = 'hsl(' + targetC + ', 50%, 80%)';
+		}
+		
+		var pad = HALF_BLOC_SIZE_DISPLAY*2;
+		var sY=0, sX = Math.round(BLOC_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 ) - HALF_BLOC_SIZE_DISPLAY;
+		for (var i=LosX0;i<=LosX1;i++) {
+			sY = Math.round(BLOC_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 ) - HALF_BLOC_SIZE_DISPLAY
+			for (var j=LosY0;j<=LosY1;j++) {
+				if (board.isBloc[i][j] == targetC){
+					gfx.fillRect(sX,sY,pad,pad);
+				}
+				sY += pad;
+			}
+			sX += pad;
 		}
 	}
 }
-
 function boardToScreen(x,y){
 	return [
 		Math.round(BLOC_TO_PIXELS*(x - player.x) + screenWidth /2 ),

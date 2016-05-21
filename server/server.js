@@ -12,7 +12,6 @@ var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 15.0;
 // These flags for the bloc board state
 var B_EMPTY = 0;
-var B_INTERPOLATED = 1;
 var B_BORDERS = 10;
 var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 
@@ -24,8 +23,8 @@ var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 var users = []; // players and their data
 
 var board = { // game board
-	H: 50,
-	W: 50,
+	H: 100,
+	W: 100,
 	isBloc: null
 };
 board.isBloc = new Array(board.W);
@@ -46,6 +45,7 @@ for (var i=0;i<board.W;i++) {
 	}
 }
 
+var blocIdLUT = {};
 var blocIdGenerator = 11;
 
 //
@@ -62,6 +62,8 @@ io.on('connection', function (socket) {
 		isDead: false,
 		x: spawnPosition[0],
 		y: spawnPosition[1],
+		lastX: spawnPosition[0],
+		lastY: spawnPosition[1],
 		dx: 0.0,
 		dy: 0.0,
 		velocity: INITIAL_VELOCITY, // in blocs per second
@@ -72,6 +74,7 @@ io.on('connection', function (socket) {
 		name: '',
 		blocId: blocIdGenerator
 	};
+	blocIdLUT[blocIdGenerator] = player;
 	blocIdGenerator++;
 	
 	users.push(player);
@@ -101,23 +104,24 @@ io.on('connection', function (socket) {
 
 		
 	socket.on('playerMove', function (newPosition) {
-		if(!player.isDead){
-			var x = Math.round(player.x), y = Math.round(player.y);
+		if(!player.isDead) {
+			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newPosition.x), ny = Math.round(newPosition.y);
 			// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
-			if((nx != x || ny != y) && board.isBloc[x][y] > B_KILLSYOUTHRESHOLD){
-				killPlayer(player);
-			} else if(x <= 0 || y <= 0 || x >= board.W-1 || y >= board.H-1) {
-				killPlayer(player); // it seems this check is necessary because of the lag (when moving at high speeds), player may sometimes leave game board
+			player.lastHeartbeat = new Date().getTime(); // TODO: use this for a check (interval function), if no movement after 5 sec... kill!
+			player.x = newPosition.x;
+			player.y = newPosition.y;
+			board.isBloc[x][y] = player.blocId;
+			player.lastX = nx;
+			player.lastY = ny;
+			
+			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag)
+				board.isBloc[nx][ny] != player.blocId && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
+				killPlayer(player); 
 			} else if(nx != x || ny != y) {
-				board.isBloc[x][y] = Math.abs(board.isBloc[x][y]); // give it it's positive (deadly) value once the player has left
-				board.isBloc[nx][ny] = player.blocId * -1; // this will prevent from killing the player
 				playerBoard[x][y] = null;
 				playerBoard[nx][ny] = player;
 			}
-			player.lastHeartbeat = new Date().getTime(); // TODO: use this for a check (interval function), if no movement after 5 sec... TIMEOUT!
-			player.x = newPosition.x;
-			player.y = newPosition.y;
 		}
 	});
 	socket.on('directionChange', function (direction) {
@@ -128,6 +132,7 @@ io.on('connection', function (socket) {
 	});
 	
 	socket.on('disconnect', function () {
+		killPlayer(player);
 		delete sockets[player.id];
 		var index = users.indexOf(player);
 		if (index > -1){
@@ -141,6 +146,8 @@ io.on('connection', function (socket) {
 			var spawnPosition = findGoodSpawn();
 			player.x = spawnPosition[0];
 			player.y = spawnPosition[1];
+			player.lastX = spawnPosition[0];
+			player.lastY = spawnPosition[1];
 			player.dx = spawnPosition[2];
 			player.dy = spawnPosition[3];
 			player.velocity = INITIAL_VELOCITY;
@@ -176,6 +183,8 @@ function gameloop() {
 	// update game state
 }
 
+var EMPTY_BLOC = -1;
+var SIDE_WALL = -2;
 var PLAYER_LOS_RANGE = 25;
 function sendUpdatesBoard() {
 	users.forEach( function(u) {
@@ -188,19 +197,30 @@ function sendUpdatesBoard() {
 			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H);
 			var newBoard = {
 				isBloc: null,
+				colors: null,
 				x0: losX0,
 				x1: losX1,
 				y0: losY0,
 				y1: losY1
 			};
 			
+			var colors = {};
 			newBoard.isBloc = new Array(losX1-losX0);
 			for (var i=0;i<losX1-losX0;i++) {
 				newBoard.isBloc[i] = new Array(losY1-losY0);
 				for (var j=0;j<losY1-losY0;j++) {
-					newBoard.isBloc[i][j] = board.isBloc[i+losX0][j+losY0] > B_EMPTY; // copy the board
+					var id = board.isBloc[i+losX0][j+losY0];
+					newBoard.isBloc[i][j] = EMPTY_BLOC;
+					if(id > B_EMPTY && blocIdLUT[id]) {
+						var c = blocIdLUT[id].hue;
+						newBoard.isBloc[i][j] = c;
+						colors[c] = true;
+					} else if (id == B_BORDERS) {
+						newBoard.isBloc[i][j] = SIDE_WALL;
+					}
 				}
 			}
+			newBoard.colors = Object.keys(colors);
 
 			sockets[u.id].emit('updateBoard', newBoard);
 		}
@@ -222,7 +242,7 @@ function sendUpdatesPlayers() {
 				for (var j=0;j<=losY1-losY0;j++) {
 					if(playerBoard[i+losX0][j+losY0]){
 						o = playerBoard[i+losX0][j+losY0];
-						if(o.id != u.id)
+						if(!o.isDead && o.id != u.id)
 							otherPlayers.push({
 								x: o.x,
 								y: o.y,
@@ -258,10 +278,10 @@ function tick() { // handles the delta time between frames
 function movePlayer(p, dt) {
 	p.x += p.dx * p.velocity * dt;
 	p.y += p.dy * p.velocity * dt;
-	// set a bloc (this is useful if the player d/c)
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
+	if(p.lastX != x || p.lastY != y)
+		board.isBloc[p.lastX][p.lastY] = p.blocId;
 	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
-	board.isBloc[x][y] = B_INTERPOLATED;
 }
 
 // returns a position and direction [x y dx dy] to spawn
@@ -295,6 +315,13 @@ function getRandomInt(min, max) {
 function killPlayer(p) {
 	p.isDead = true;
 	sockets[p.id].emit('playerDied');
+	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
+	for (var i=0;i<board.W;i++) {
+		for (var j=0;j<board.H;j++) {
+			if(board.isBloc[i][j] == p.blocId)
+				board.isBloc[i][j] = B_EMPTY;
+		}
+	}
 }
 
 /*function toBoardRange(x,y) {
@@ -307,6 +334,6 @@ function killPlayer(p) {
 
 /** Launch game **/
 /*setInterval(moveloop, 1000 / 60);*/
-setInterval(gameloop, 1000/30);
-setInterval(sendUpdatesBoard, 1000 / 10);
-setInterval(sendUpdatesPlayers, 1000 / 30);
+setInterval(gameloop, 1000/15);
+setInterval(sendUpdatesBoard, 1000 / 15);
+setInterval(sendUpdatesPlayers, 1000 / 15);

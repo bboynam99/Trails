@@ -1,20 +1,11 @@
 TODO LIST:
- - players should die when they hit a wall
- - server should know the player's trail. when a player dies, the trail disapears
- - player disconnect = player dead.
- - players should die when they exit the map.
- - show player names
- 
-
- - health bar
  - xp bar
- - display name and level
- 
+
  - spawn little xp bonuses on the map
  - when you kill someone, you gain some of his xp
- 
+ - health bar
+ - display name and level
  - attribute system
- 
  - skill system
 
 
