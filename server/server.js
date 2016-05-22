@@ -9,7 +9,10 @@ app.use(express.static(__dirname + '/../client'));
 /** Game Constants **/
 //
 var SPAWN_SPACE_NEEDED = 5;
-var INITIAL_VELOCITY = 15.0;
+var INITIAL_VELOCITY = 5.0;
+var NUM_XP_ONBOARD = 25;
+var MAX_PLAYER_SPEED = 18;
+
 // These flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
@@ -19,18 +22,21 @@ var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 //
 /** Game variables **/
 //
-
 var users = []; // players and their data
-
 var board = { // game board
 	H: 100,
 	W: 100,
-	isBloc: null
+	isBloc: null,
+	isXp: null,
 };
+var numXp = 0;
 board.isBloc = new Array(board.W);
+board.isXp = new Array(board.W);
 for (var i=0;i<board.W;i++) {
 	board.isBloc[i] = new Array(board.H);
+	board.isXp[i] = new Array(board.H);
 	for (var j=0;j<board.H;j++) {
+		board.isXp[i][j] = false;
 		board.isBloc[i][j] = B_EMPTY;
 		if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
 			board.isBloc[i][j] = B_BORDERS;
@@ -115,6 +121,14 @@ io.on('connection', function (socket) {
 			player.lastX = nx;
 			player.lastY = ny;
 			
+			if(board.isXp[nx][ny]) {
+				board.isXp[nx][ny] = false;
+				numXp--;
+				player.velocity = Math.min(player.velocity + 0.5, MAX_PLAYER_SPEED);
+				sockets[player.id].emit('newSpeed', player.velocity);
+			}
+				
+			
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag)
 				board.isBloc[nx][ny] != player.blocId && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
 				killPlayer(player); 
@@ -178,6 +192,8 @@ function gameloop() {
 	
 	// interpolate player position
 	moveloop(dt);
+	// spawn xp
+	spawnXp();
     // update leaderboard
 	
 	// update game state
@@ -198,6 +214,7 @@ function sendUpdatesBoard() {
 			var newBoard = {
 				isBloc: null,
 				colors: null,
+				isXp: null,
 				x0: losX0,
 				x1: losX1,
 				y0: losY0,
@@ -206,9 +223,12 @@ function sendUpdatesBoard() {
 			
 			var colors = {};
 			newBoard.isBloc = new Array(losX1-losX0);
+			newBoard.isXp = new Array(losX1-losX0);
 			for (var i=0;i<losX1-losX0;i++) {
 				newBoard.isBloc[i] = new Array(losY1-losY0);
+				newBoard.isXp[i] = new Array(losY1-losY0);
 				for (var j=0;j<losY1-losY0;j++) {
+					// this is for board and colors
 					var id = board.isBloc[i+losX0][j+losY0];
 					newBoard.isBloc[i][j] = EMPTY_BLOC;
 					if(id > B_EMPTY && blocIdLUT[id]) {
@@ -218,6 +238,8 @@ function sendUpdatesBoard() {
 					} else if (id == B_BORDERS) {
 						newBoard.isBloc[i][j] = SIDE_WALL;
 					}
+					// this is for xp
+					newBoard.isXp[i][j] = board.isXp[i+losX0][j+losY0];
 				}
 			}
 			newBoard.colors = Object.keys(colors);
@@ -285,7 +307,7 @@ function movePlayer(p, dt) {
 }
 
 // returns a position and direction [x y dx dy] to spawn
-function findGoodSpawn(){
+function findGoodSpawn() {
 	var x,y,dx,dy;
 	var goodSpawn = false;
 	do {
@@ -306,6 +328,17 @@ function findGoodSpawn(){
 	} while(!goodSpawn);
 	console.log('Spawning player at ' + x +',' + y + ' with direction ' + dx + ',' + dy);
 	return [x,y,dx,dy];
+}
+
+function spawnXp() {
+	if(numXp < NUM_XP_ONBOARD) {
+		var x = getRandomInt(1,board.W - 1);
+		var y = getRandomInt(1,board.H - 1);
+		if(!board.isXp[x][y] && !playerBoard[x][y]) {
+			board.isXp[x][y] = true;
+			numXp++;
+		}
+	}
 }
 
 function getRandomInt(min, max) {

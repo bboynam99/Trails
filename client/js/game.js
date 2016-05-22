@@ -11,15 +11,17 @@ Game.prototype.handleNetwork = function(socket) {
 		initBoard(board.boardW,board.boardH);
 		player = newPlayer;
 		player['name'] = playerName; // in case myNameIs hasn't registered yet
-		colors = [player.hue];
+
 		gameOver = false;
 		tick();
 	});
 	
 	socket.on('updateBoard', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
-			for (var j=newBoard.y0;j<newBoard.y1;j++) {
-				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0];
+			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
+				board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
+				if(board.isBloc[i][j]  != [player.hue]) // this prevents a display sync problem
+					board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0];
 			}
 		}
 		colors = newBoard.colors;
@@ -30,7 +32,7 @@ Game.prototype.handleNetwork = function(socket) {
 		updatedPlayers.forEach( function(p) {
 			for ( var i=0; i < otherPlayers.length; i++ ) {
 				var o = otherPlayers[i];
-				if (o.name === p.name && o.hue === p.hue) { // is it same dude?
+				if (o.name === p.name && o.hue === p.hue) { // if it's the same dude?
 					if(o.dx == p.dx && o.dy == p.dy) { // if the direction hasn't changed
 						if(Math.abs(o.x - p.x) + Math.abs(o.y - p.y) < (Math.abs(o.dx) + Math.abs(o.dy)) * o.velocity * 0.1) {
 							// keep the old values if the delta is small (to avoid jitter)
@@ -48,6 +50,10 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	socket.on('playerDied', function () {
 		gameOver = true;
+	});
+	
+	socket.on('newSpeed', function (v) {
+		player.velocity = v;
 	});
 }
 
@@ -69,7 +75,7 @@ Game.prototype.handleLogic = function() {
 }
 
 Game.prototype.handleGraphics = function(gfx) {
-	if (!player) // the game hasn't initialized yet!
+	if (!player) // the game hasn't initialize yet!
 		return;
 		
 	// This is where you draw everything
@@ -109,8 +115,11 @@ var otherPlayers = null;
 var board = {
 	H: 0,
 	W: 0,
-	isBloc: null
+	isBloc: null,
+	isXp: null
 };
+var colors = []; // contains all colors to be drawn, received from server.
+
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 
 function initBoard(H,W){
@@ -118,10 +127,13 @@ function initBoard(H,W){
 	board.W = W;
 	board.H = H;
 	board.isBloc = new Array(W);
+	board.isXp = new Array(W);
 	for (var i=0;i<W;i++) {
 		board.isBloc[i] = new Array(H);
+		board.isXp[i] = new Array(H);
 		for (var j=0;j<H;j++) {
 			board.isBloc[i][j] = EMPTY_BLOC;
+			board.isXp[i][j] = false;
 		}
 	}
 }
@@ -135,8 +147,10 @@ var BLOC_TO_PIXELS = 50; // the size of a game bloc
 var BLOC_COLOR = '#777';
 var EMPTY_BLOC = -1;
 var SIDE_WALL = -2;
-
-var colors = []; // not a constant, but contains all colors to be drawn. sent by server.
+var XP_RADIUS = 10;
+var XP_STROKE = 3;
+var XP_COLOR = '#9900ff';
+var XP_SCOLOR = '#000066';
 
 //
 /** Game logic helpers **/
@@ -176,7 +190,9 @@ function updatePlayerDirection() {
 	// if we had a delta, adjust according to the new direction
 	player.x += player.dx * (delta);
 	player.y += player.dy * (delta);
+	lastDirectionPressed = comboDirectionPressed;
 	lastDirectionPressed = NO_KEY;
+	updateTurnTargetPosition();
 }
 
 function changePlayerSpeed(x,y) {
@@ -212,7 +228,7 @@ function drawPlayer(gfx, p){
 	gfx.strokeStyle =  'hsl(' + p.hue + ', 90%, 40%)';
 	gfx.lineWidth = 5;
 	gfx.lineJoin = 'round';
-    gfx.lineCap = 'round';
+	gfx.lineCap = 'round';
 	var coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOC_SIZE_DISPLAY);
 	gfx.fillRect(coords[0],coords[1],coords[2],coords[3]);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
@@ -236,7 +252,7 @@ function drawBoard(gfx){
 	LosX1 = Math.round(Math.min(player.x + LosW, board.W-1));
 	LosY0 = Math.round(Math.max(player.y - LosH,0));
 	LosY1 = Math.round(Math.min(player.y + LosH, board.H-1));
-	
+
 	for (var c=-1; c < colors.length; c++) {
 		// set brush color and target id
 		var targetC;
@@ -251,15 +267,34 @@ function drawBoard(gfx){
 		var pad = HALF_BLOC_SIZE_DISPLAY*2;
 		var sY=0, sX = Math.round(BLOC_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 ) - HALF_BLOC_SIZE_DISPLAY;
 		for (var i=LosX0;i<=LosX1;i++) {
-			sY = Math.round(BLOC_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 ) - HALF_BLOC_SIZE_DISPLAY
+			sY = Math.round(BLOC_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 ) - HALF_BLOC_SIZE_DISPLAY;
 			for (var j=LosY0;j<=LosY1;j++) {
 				if (board.isBloc[i][j] == targetC){
 					gfx.fillRect(sX,sY,pad,pad);
 				}
-				sY += pad;
+				sY += BLOC_TO_PIXELS;
 			}
-			sX += pad;
+			sX += BLOC_TO_PIXELS;
 		}
+	}
+	// draw xp
+	gfx.fillStyle = XP_COLOR;
+	gfx.strokeStyle = XP_SCOLOR;
+	gfx.lineWidth = XP_STROKE;
+	var PI2 = 2*Math.PI;
+	var sY=0, sX = Math.round(BLOC_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 );
+	for (var i=LosX0;i<=LosX1;i++) {
+		sY = Math.round(BLOC_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 );
+		for (var j=LosY0;j<=LosY1;j++) {
+			if (board.isXp[i][j]) {
+				gfx.beginPath();
+				gfx.arc(sX,sY,XP_RADIUS,0,PI2);
+				gfx.fill();
+				gfx.stroke();
+			}
+			sY += BLOC_TO_PIXELS;
+		}
+		sX += BLOC_TO_PIXELS;
 	}
 }
 function boardToScreen(x,y){
@@ -294,14 +329,17 @@ function bindKeyboard(){
 }
 
 var lastDirectionPressed = NO_KEY;
-var turnPosition = [0,0];
+var comboDirectionPressed = NO_KEY;
 function directionDown(event) {
 	var key = event.which || event.keyCode;
 	if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_DOWN || key == KEY_UP) {
 		if(!gameOver){
-			lastDirectionPressed = key;
-			turnPosition[0] = Math.round(player.x + player.dx/2);
-			turnPosition[1] = Math.round(player.y + player.dy/2);
+			if(lastDirectionPressed == NO_KEY) {
+				lastDirectionPressed = key;
+				updateTurnTargetPosition();
+			} else {
+				comboDirectionPressed = key; // TODO: combo doesn't work!
+			}
 		}
 	} else if(key == KEY_SPACE) {
 		if(gameOver)
@@ -309,3 +347,8 @@ function directionDown(event) {
 	}
 }
 
+var turnPosition = [0,0];
+function updateTurnTargetPosition() {
+	turnPosition[0] = Math.round(player.x + player.dx/2);
+	turnPosition[1] = Math.round(player.y + player.dy/2);
+}
