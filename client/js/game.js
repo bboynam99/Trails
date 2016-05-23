@@ -5,7 +5,10 @@ function Game() { };
 Game.prototype.handleNetwork = function(socket) {
 	socket.emit('myNameIs', playerName);
 	
-	bindKeyboard();
+	var c = document.getElementById('cvs');
+	c.width = screenWidth; c.height = screenHeight;
+	bindKeyboard(c);
+	bindClickTap(c);
 	// This is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, board) {
 		initBoard(board.boardW,board.boardH);
@@ -20,14 +23,15 @@ Game.prototype.handleNetwork = function(socket) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
 				board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
-				if(board.isBloc[i][j]  != [player.hue]) // this prevents a display sync problem
-					board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0];
+				// TODO: need to find a better solution to this. sometimes, a new bloc that hasn't registered with server yet disapears, causing flicker.
+				//if(board.isBloc[i][j]  != [player.hue]) // this prevents a display sync problem
+					board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
 			}
 		}
 		colors = newBoard.colors;
 	});
 	
-	socket.on('updatePlayers', function (updatedPlayers) {
+	socket.on('updatePlayers', function (updatedPlayers, newLinks) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
 			for ( var i=0; i < otherPlayers.length; i++ ) {
@@ -45,7 +49,7 @@ Game.prototype.handleNetwork = function(socket) {
 			}
 		});
 		otherPlayers = updatedPlayers;
-		
+		links = newLinks;
 	});
 	
 	socket.on('playerDied', function () {
@@ -55,6 +59,10 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('newSpeed', function (v) {
 		player.velocity = v;
 	});
+	
+	socket.on('newHue', function (v) {
+		player.hue = v;
+	});	
 }
 
 Game.prototype.handleLogic = function() {
@@ -105,6 +113,8 @@ Game.prototype.handleGraphics = function(gfx) {
 		otherPlayers.forEach( function(o) {
 			drawPlayer(gfx, o);
 		});
+	// drawLinks
+	drawLinks(gfx);
 }
 
 //
@@ -119,6 +129,7 @@ var board = {
 	isXp: null
 };
 var colors = []; // contains all colors to be drawn, received from server.
+var links = [];
 
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 
@@ -151,6 +162,11 @@ var XP_RADIUS = 10;
 var XP_STROKE = 3;
 var XP_COLOR = '#9900ff';
 var XP_SCOLOR = '#000066';
+var LINK_COLOR = '#F00';
+var LINK_SCOLOR = '#400';
+var LINK_INNER = 10;
+var LINK_OUTER = 15;
+var LINK_JITTER = 5; // adds a jitter effect (in px)
 
 //
 /** Game logic helpers **/
@@ -179,13 +195,13 @@ function updatePlayerDirection() {
 	player.y = Math.round(player.y);
 	
 	if (lastDirectionPressed == KEY_LEFT && player.dx == 0) {
-		changePlayerSpeed(-1.0,0.0);
+		changePlayerDirection(-1.0,0.0);
 	} else if (lastDirectionPressed == KEY_RIGHT && player.dx == 0) {
-		changePlayerSpeed(1.0,0.0);
+		changePlayerDirection(1.0,0.0);
 	} else if (lastDirectionPressed == KEY_DOWN && player.dy == 0) {
-		changePlayerSpeed(0.0,1.0);
+		changePlayerDirection(0.0,1.0);
 	} else if (lastDirectionPressed == KEY_UP && player.dy == 0) {
-		changePlayerSpeed(0.0,-1.0);
+		changePlayerDirection(0.0,-1.0);
 	}
 	// if we had a delta, adjust according to the new direction
 	player.x += player.dx * (delta);
@@ -195,7 +211,7 @@ function updatePlayerDirection() {
 	updateTurnTargetPosition();
 }
 
-function changePlayerSpeed(x,y) {
+function changePlayerDirection(x,y) {
 	player.dx = x;
 	player.dy = y;
 	socket.emit('directionChange',{dx:player.dx, dy:player.dy});
@@ -297,11 +313,52 @@ function drawBoard(gfx){
 		sX += BLOC_TO_PIXELS;
 	}
 }
-function boardToScreen(x,y){
-	return [
-		Math.round(BLOC_TO_PIXELS*(x - player.x) + screenWidth /2 ),
-		Math.round(BLOC_TO_PIXELS*(y - player.y) + screenHeight /2 )
-	];
+
+function drawLinks(gfx) {
+	if(links)
+		links.forEach( function(l) {
+			// compute line coords
+			var s = boardToScreen(l.x0,l.y0,true);
+			var x1 = l.x0 + (l.x1 - l.x0) *l.progress,
+				y1 = l.y0 + (l.y1 - l.y0) *l.progress;
+			var e = boardToScreen(x1,y1,true);
+			
+			gfx.strokeStyle = LINK_SCOLOR;
+			gfx.lineWidth = LINK_OUTER;
+			gfx.beginPath();
+			gfx.moveTo(s[0],s[1]);
+			for(var i=0; i<=1.1; i+=0.1){ // TODO: rewrite this to use s and e, also, put in array, and draw background with it.
+				var x = l.x0 + (l.x1 - l.x0) * (l.progress * i) + getRandomInt(-1 * LINK_JITTER, LINK_JITTER),
+					y = l.y0 + (l.y1 - l.y0) * (l.progress * i) + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+			}
+			// draw outer line
+			// gfx.strokeStyle = LINK_SCOLOR;
+			// gfx.lineWidth = LINK_OUTER;
+			// gfx.beginPath();
+			//gfx.moveTo(s[0],s[1]);
+			//gfx.lineTo(e[0],e[1]);
+			//gfx.stroke();
+			// draw inner line
+			//gfx.strokeStyle = LINK_COLOR;
+			//gfx.lineWidth = LINK_INNER;
+			//gfx.beginPath();
+			//gfx.moveTo(s[0],s[1]);
+			//gfx.lineTo(e[0],e[1]);
+			//gfx.stroke();
+		});
+}
+
+function boardToScreen(x,y,isfloat){
+	if(isfloat)
+		return [
+			BLOC_TO_PIXELS*(x - player.x) + screenWidth /2,
+			BLOC_TO_PIXELS*(y - player.y) + screenHeight /2
+		];
+	else
+		return [
+			Math.round(BLOC_TO_PIXELS*(x - player.x) + screenWidth /2 ),
+			Math.round(BLOC_TO_PIXELS*(y - player.y) + screenHeight /2 )
+		];
 }
 
 function getBlocDrawCoordinates(x,y,size){
@@ -322,9 +379,28 @@ var KEY_DOWN = 40;
 var KEY_SPACE = 32;
 var NO_KEY = -1;
 
-function bindKeyboard(){
-	var c = document.getElementById('cvs');
-	c.width = screenWidth; c.height = screenHeight;
+var TAP_SIDE_THRESHOLD = 0.35;
+function bindClickTap(c) {
+	c.addEventListener('click', function(event) {
+		// figure out where the tap happened
+		var key = null;
+		if(event.x < TAP_SIDE_THRESHOLD * screenWidth)
+			key = KEY_LEFT;
+		else if(event.x > (1-TAP_SIDE_THRESHOLD) * screenWidth)
+			key = KEY_RIGHT;
+		else if(event.y < TAP_SIDE_THRESHOLD * screenHeight)
+			key = KEY_UP;
+		else if(event.y > TAP_SIDE_THRESHOLD * screenHeight)
+			key = KEY_DOWN;
+		else if(gameOver){ // SPACE BAR LOGIC
+			socket.emit('respawnRequest', playerName);
+			return;
+		}
+		applyKeyboardDirectionLogic(key);
+	}, false);
+}
+
+function bindKeyboard(c) {
 	c.addEventListener('keydown', directionDown, false);
 }
 
@@ -333,17 +409,22 @@ var comboDirectionPressed = NO_KEY;
 function directionDown(event) {
 	var key = event.which || event.keyCode;
 	if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_DOWN || key == KEY_UP) {
-		if(!gameOver){
-			if(lastDirectionPressed == NO_KEY) {
-				lastDirectionPressed = key;
-				updateTurnTargetPosition();
-			} else {
-				comboDirectionPressed = key; // TODO: combo doesn't work!
-			}
-		}
+		applyKeyboardDirectionLogic(key);
 	} else if(key == KEY_SPACE) {
 		if(gameOver)
 			socket.emit('respawnRequest', playerName);
+	}
+}
+
+function applyKeyboardDirectionLogic(key) {
+function applyKeyboardDirectionLogic(key) {
+	if(!gameOver) {
+		if(lastDirectionPressed == NO_KEY) {
+			lastDirectionPressed = key;
+			updateTurnTargetPosition();
+		} else {
+			comboDirectionPressed = key;
+		}
 	}
 }
 
@@ -351,4 +432,8 @@ var turnPosition = [0,0];
 function updateTurnTargetPosition() {
 	turnPosition[0] = Math.round(player.x + player.dx/2);
 	turnPosition[1] = Math.round(player.y + player.dy/2);
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }

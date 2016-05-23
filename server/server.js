@@ -19,7 +19,7 @@ var LINK_END = 2; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
 
-// These flags for the bloc board state
+// Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
 var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
@@ -36,6 +36,7 @@ var board = { // game board
 	isXp: null,
 };
 var numXp = 0;
+// init board
 board.isBloc = new Array(board.W);
 board.isXp = new Array(board.W);
 for (var i=0;i<board.W;i++) {
@@ -60,6 +61,7 @@ for (var i=0;i<board.W;i++) {
 var blocIdLUT = {};
 var blocIdGenerator = 11;
 var links = []; // link maps between players
+var colorsLUT = [];
 
 //
 /** Socket communication (game events) **/
@@ -87,6 +89,7 @@ io.on('connection', function (socket) {
 		name: '',
 		blocId: blocIdGenerator
 	};
+	colorsLUT[player.blocId] = player.hue;
 	blocIdLUT[blocIdGenerator] = player;
 	blocIdGenerator++;
 	
@@ -97,7 +100,9 @@ io.on('connection', function (socket) {
 	});	
 	
 	// emit [player, board]
-	function emitRespawn(){
+	function emitRespawn() {
+		player.hue = Math.round(Math.random() * 360); // player is no longer part of any other hue groups!
+		colorsLUT[player.blocId] = player.hue;
 		player.isDead = false;
 		socket.emit('playerSpawn',{
 			x: player.x,
@@ -135,10 +140,9 @@ io.on('connection', function (socket) {
 				player.xp++;
 				sockets[player.id].emit('newSpeed', player.velocity);
 			}
-				
 			
-			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag)
-				board.isBloc[nx][ny] != player.blocId && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
+			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag, will not always hit boundary walls)
+				colorsLUT[board.isBloc[nx][ny]] != player.hue && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
 				killPlayer(player); 
 			} else if(nx != x || ny != y) {
 				playerBoard[x][y] = null;
@@ -156,6 +160,7 @@ io.on('connection', function (socket) {
 	socket.on('disconnect', function () {
 		killPlayer(player);
 		delete sockets[player.id];
+		delete colorsLUT[player.blocId];
 		var index = users.indexOf(player);
 		if (index > -1){
             users.splice(index, 1);
@@ -270,7 +275,6 @@ function sendUpdatesPlayers() {
 			var newLinks = [];
 			var l = links[u];
 			if(l && l.dt >= LINK_START) {
-				console.log('uploading self link update!');
 				newLinks.push(toClientLink(l));
 			}
 			
@@ -291,7 +295,6 @@ function sendUpdatesPlayers() {
 							l = links[otherPlayers];
 							if(l && l.dt >= LINK_START) {
 								newLinks.push(toClientLink(l));
-								console.log('uploading link update!');
 							}
 								
 							// while were at it, check for links
@@ -311,7 +314,7 @@ function toClientLink(serverLink) {
 		y0: serverLink.fromP.y,
 		x1: serverLink.toP.x,
 		y1: serverLink.toP.y,
-		progres: (serverLink.dt - LINK_START) / LINK_END
+		progress: (serverLink.dt - LINK_START) / LINK_END
 	}
 }
 
@@ -379,37 +382,38 @@ function updateLinks(dt) {
 		var A = l.fromP, B = l.toP;
 		var dist = (Math.abs(A.x - B.x) + Math.abs(A.y - B.y));
 		if(A.isDead || B.isDead || dist > LINK_SUSTAIN ) {
-			console.log('deleting link: dist=' + dist + ' > ' + LINK_SUSTAIN);
-			delete links[key];
+			delete links[key]; // link broken!
 		} else {
 			l.dt += dt;
-			console.log('link between ' + A.name + ' and ' + B.name + ' is now at ' + l.dt + ' needs to be >=' +  LINK_END);
-			if(l.dt >= LINK_END) { // conversion is complete!
-				console.log('MERGE COMPLETE!');
+			if(l.dt >= LINK_END) { // link conversion is complete!
 				B.hue = A.hue;
 				delete links[key];
+				colorsLUT[B.blocId] = B.hue;
+				sockets[B.id].emit('newHue', B.hue);
 			}
 		}
 	};
 }
 function checkForLink(playerA, playerB) {
 	if(links) {
-		if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
-			if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
-				if(!(playerA in links) && !(playerB in links)) {
-					if(playerA.xp > playerB.xp) {
-						console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
-						links[playerA] = {
-							fromP: playerA,
-							toP: playerB,
-							dt: 0
-						}
-					} else{
-						console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
-						links[playerB] = {
-							fromP: playerB,
-							toP: playerA,
-							dt: 0
+		if(colorsLUT[playerA.blocId] != colorsLUT[playerB.blocId]) {
+			if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
+				if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
+					if(!(playerA in links) && !(playerB in links)) {
+						if(playerA.xp > playerB.xp) {
+							console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
+							links[playerA] = {
+								fromP: playerA,
+								toP: playerB,
+								dt: 0
+							}
+						} else{
+							console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
+							links[playerB] = {
+								fromP: playerB,
+								toP: playerA,
+								dt: 0
+							}
 						}
 					}
 				}
