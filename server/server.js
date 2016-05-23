@@ -14,10 +14,10 @@ var NUM_XP_ONBOARD = 25;
 var MAX_PLAYER_SPEED = 12;
 var FREQ_XP_DROP_ONDEATH = 15; // xp drop freq
 var SPEED_BOOST_PER_XP = .2; // speed gain per xp
-var LINK_START = 0.25; // link will show after this (sec)
+var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 2; // link will end after this
-var LINK_RANGE = 3; // link will start at this distance
-var LINK_SUSTAIN = 8; // link will stay alive at this range (hysteresis)
+var LINK_RANGE = 5; // link will start at this distance
+var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
 
 // These flags for the bloc board state
 var B_EMPTY = 0;
@@ -267,6 +267,12 @@ function sendUpdatesPlayers() {
 			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H-1);
 
 			var otherPlayers = [];
+			var newLinks = [];
+			var l = links[u];
+			if(l && l.dt >= LINK_START) {
+				console.log('uploading self link update!');
+				newLinks.push(toClientLink(l));
+			}
 			
 			for (var i=0;i<=losX1-losX0;i++) {
 				for (var j=0;j<=losY1-losY0;j++) {
@@ -282,20 +288,36 @@ function sendUpdatesPlayers() {
 								hue: o.hue,
 								name: o.name
 							});
+							l = links[otherPlayers];
+							if(l && l.dt >= LINK_START) {
+								newLinks.push(toClientLink(l));
+								console.log('uploading link update!');
+							}
+								
 							// while were at it, check for links
-							checkForLink(u, otherPlayers);
+							checkForLink(u, o);
 						}
 					}
 				}
 			}
-			sockets[u.id].emit('updatePlayers', otherPlayers);
+			sockets[u.id].emit('updatePlayers', otherPlayers, newLinks);
 		}
 	});
 }
 
-function dist(otherPlayer,player) {
-  return Math.max(Math.abs(otherPlayer.x - player.x),Math.abs(otherPlayer.y - player.y)) < PLAYER_LOS_RANGE;
+function toClientLink(serverLink) {
+	return {
+		x0: serverLink.fromP.x,
+		y0: serverLink.fromP.y,
+		x1: serverLink.toP.x,
+		y1: serverLink.toP.y,
+		progres: (serverLink.dt - LINK_START) / LINK_END
+	}
 }
+
+/*function dist(otherPlayer,player) {
+  return Math.max(Math.abs(otherPlayer.x - player.x),Math.abs(otherPlayer.y - player.y)) < PLAYER_LOS_RANGE;
+}*/
 
 /** Game Logic Helpers **/
 var lastUpdate = Date.now(); // used to compute the time delta between frames
@@ -352,31 +374,38 @@ function spawnXp() {
 }
 
 function updateLinks(dt) {
-	links.forEach( function(l, i) {
+	for (var key in links) {
+		var l = links[key];
 		var A = l.fromP, B = l.toP;
-		if(Math.abs(A.x - B.x) + Math.abs(A.y - B.y) > LINK_SUSTAIN || (A.dx != B.dx && A.dy != B.dy)) {
-			links.splice(i, 1);
-		} else{
+		var dist = (Math.abs(A.x - B.x) + Math.abs(A.y - B.y));
+		if(A.isDead || B.isDead || dist > LINK_SUSTAIN ) {
+			console.log('deleting link: dist=' + dist + ' > ' + LINK_SUSTAIN);
+			delete links[key];
+		} else {
 			l.dt += dt;
+			console.log('link between ' + A.name + ' and ' + B.name + ' is now at ' + l.dt + ' needs to be >=' +  LINK_END);
 			if(l.dt >= LINK_END) { // conversion is complete!
+				console.log('MERGE COMPLETE!');
 				B.hue = A.hue;
-				links.splice(i, 1);
+				delete links[key];
 			}
 		}
-	});
+	};
 }
 function checkForLink(playerA, playerB) {
 	if(links) {
 		if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
 			if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
-				if(!links[playerA] && !links[playerB]) {
+				if(!(playerA in links) && !(playerB in links)) {
 					if(playerA.xp > playerB.xp) {
+						console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
 						links[playerA] = {
 							fromP: playerA,
 							toP: playerB,
 							dt: 0
 						}
 					} else{
+						console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
 						links[playerB] = {
 							fromP: playerB,
 							toP: playerA,

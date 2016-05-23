@@ -191,7 +191,7 @@ function updatePlayerDirection() {
 	player.x += player.dx * (delta);
 	player.y += player.dy * (delta);
 	lastDirectionPressed = comboDirectionPressed;
-	lastDirectionPressed = NO_KEY;
+	comboDirectionPressed = NO_KEY;
 	updateTurnTargetPosition();
 }
 
