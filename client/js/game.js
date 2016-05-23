@@ -162,9 +162,9 @@ var XP_RADIUS = 10;
 var XP_STROKE = 3;
 var XP_COLOR = '#9900ff';
 var XP_SCOLOR = '#000066';
-var LINK_COLOR = '#F00';
-var LINK_SCOLOR = '#400';
-var LINK_INNER = 10;
+var LINK_COLOR = '#99ccff';
+var LINK_SCOLOR = '#00264d';
+var LINK_INNER = 7;
 var LINK_OUTER = 15;
 var LINK_JITTER = 5; // adds a jitter effect (in px)
 
@@ -319,32 +319,37 @@ function drawLinks(gfx) {
 		links.forEach( function(l) {
 			// compute line coords
 			var s = boardToScreen(l.x0,l.y0,true);
-			var x1 = l.x0 + (l.x1 - l.x0) *l.progress,
-				y1 = l.y0 + (l.y1 - l.y0) *l.progress;
+			var x1 = l.x0 + (l.x1 - l.x0) *(1.6 * l.progress),
+				y1 = l.y0 + (l.y1 - l.y0) * (1.6 * l.progress);
 			var e = boardToScreen(x1,y1,true);
 			
+			var pts = new Array(22);
+			var w = 0.0;
+			for(var i=0; i<=20; i+=2) {
+				pts[i] = s[0] + (e[0] - s[0]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+				pts[i+1] = s[1] + (e[1] - s[1]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+				w += 0.05;
+			}
+			
+			// draw outer line
 			gfx.strokeStyle = LINK_SCOLOR;
 			gfx.lineWidth = LINK_OUTER;
 			gfx.beginPath();
-			gfx.moveTo(s[0],s[1]);
-			for(var i=0; i<=1.1; i+=0.1){ // TODO: rewrite this to use s and e, also, put in array, and draw background with it.
-				var x = l.x0 + (l.x1 - l.x0) * (l.progress * i) + getRandomInt(-1 * LINK_JITTER, LINK_JITTER),
-					y = l.y0 + (l.y1 - l.y0) * (l.progress * i) + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+			gfx.moveTo(pts[0],pts[1]);
+			for(var i=2; i<pts.length; i+=2) {
+				gfx.lineTo(pts[i],pts[i+1]);
 			}
-			// draw outer line
-			// gfx.strokeStyle = LINK_SCOLOR;
-			// gfx.lineWidth = LINK_OUTER;
-			// gfx.beginPath();
-			//gfx.moveTo(s[0],s[1]);
-			//gfx.lineTo(e[0],e[1]);
-			//gfx.stroke();
+			gfx.stroke();
+			
 			// draw inner line
-			//gfx.strokeStyle = LINK_COLOR;
-			//gfx.lineWidth = LINK_INNER;
-			//gfx.beginPath();
-			//gfx.moveTo(s[0],s[1]);
-			//gfx.lineTo(e[0],e[1]);
-			//gfx.stroke();
+			gfx.strokeStyle = LINK_COLOR;
+			gfx.lineWidth = LINK_INNER;
+			gfx.beginPath();
+			gfx.moveTo(pts[0],pts[1]);
+			for(var i=2; i<pts.length; i+=2) {
+				gfx.lineTo(pts[i],pts[i+1]);
+			}
+			gfx.stroke();
 		});
 }
 
@@ -416,7 +421,6 @@ function directionDown(event) {
 	}
 }
 
-function applyKeyboardDirectionLogic(key) {
 function applyKeyboardDirectionLogic(key) {
 	if(!gameOver) {
 		if(lastDirectionPressed == NO_KEY) {
