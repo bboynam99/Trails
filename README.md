@@ -13,3 +13,4 @@ This is private repo for the next big online io game.
  - player team merge (when close)
  - teleport skill
  - fix keyboard controls (sometimes feels unresponsive)
+ - test on mobile phone
