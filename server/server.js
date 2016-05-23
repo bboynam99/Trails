@@ -11,7 +11,13 @@ app.use(express.static(__dirname + '/../client'));
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 5.0;
 var NUM_XP_ONBOARD = 25;
-var MAX_PLAYER_SPEED = 18;
+var MAX_PLAYER_SPEED = 12;
+var FREQ_XP_DROP_ONDEATH = 15; // xp drop freq
+var SPEED_BOOST_PER_XP = .2; // speed gain per xp
+var LINK_START = 0.25; // link will show after this (sec)
+var LINK_END = 2; // link will end after this
+var LINK_RANGE = 3; // link will start at this distance
+var LINK_SUSTAIN = 8; // link will stay alive at this range (hysteresis)
 
 // These flags for the bloc board state
 var B_EMPTY = 0;
@@ -53,6 +59,7 @@ for (var i=0;i<board.W;i++) {
 
 var blocIdLUT = {};
 var blocIdGenerator = 11;
+var links = []; // link maps between players
 
 //
 /** Socket communication (game events) **/
@@ -124,7 +131,8 @@ io.on('connection', function (socket) {
 			if(board.isXp[nx][ny]) {
 				board.isXp[nx][ny] = false;
 				numXp--;
-				player.velocity = Math.min(player.velocity + 0.5, MAX_PLAYER_SPEED);
+				player.velocity = Math.min(player.velocity + SPEED_BOOST_PER_XP, MAX_PLAYER_SPEED);
+				player.xp++;
 				sockets[player.id].emit('newSpeed', player.velocity);
 			}
 				
@@ -194,9 +202,9 @@ function gameloop() {
 	moveloop(dt);
 	// spawn xp
 	spawnXp();
+	// update links
+	updateLinks(dt);
     // update leaderboard
-	
-	// update game state
 }
 
 var EMPTY_BLOC = -1;
@@ -262,9 +270,9 @@ function sendUpdatesPlayers() {
 			
 			for (var i=0;i<=losX1-losX0;i++) {
 				for (var j=0;j<=losY1-losY0;j++) {
-					if(playerBoard[i+losX0][j+losY0]){
+					if(playerBoard[i+losX0][j+losY0]) {
 						o = playerBoard[i+losX0][j+losY0];
-						if(!o.isDead && o.id != u.id)
+						if(!o.isDead && o.id != u.id) {
 							otherPlayers.push({
 								x: o.x,
 								y: o.y,
@@ -274,7 +282,9 @@ function sendUpdatesPlayers() {
 								hue: o.hue,
 								name: o.name
 							});
-
+							// while were at it, check for links
+							checkForLink(u, otherPlayers);
+						}
 					}
 				}
 			}
@@ -341,18 +351,64 @@ function spawnXp() {
 	}
 }
 
+function updateLinks(dt) {
+	links.forEach( function(l, i) {
+		var A = l.fromP, B = l.toP;
+		if(Math.abs(A.x - B.x) + Math.abs(A.y - B.y) > LINK_SUSTAIN || (A.dx != B.dx && A.dy != B.dy)) {
+			links.splice(i, 1);
+		} else{
+			l.dt += dt;
+			if(l.dt >= LINK_END) { // conversion is complete!
+				B.hue = A.hue;
+				links.splice(i, 1);
+			}
+		}
+	});
+}
+function checkForLink(playerA, playerB) {
+	if(links) {
+		if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
+			if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
+				if(!links[playerA] && !links[playerB]) {
+					if(playerA.xp > playerB.xp) {
+						links[playerA] = {
+							fromP: playerA,
+							toP: playerB,
+							dt: 0
+						}
+					} else{
+						links[playerB] = {
+							fromP: playerB,
+							toP: playerA,
+							dt: 0
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function killPlayer(p) {
+	xpDropCounter = 0;
 	p.isDead = true;
 	sockets[p.id].emit('playerDied');
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
-	for (var i=0;i<board.W;i++) {
-		for (var j=0;j<board.H;j++) {
-			if(board.isBloc[i][j] == p.blocId)
+	for (var i=1;i<board.W-1;i++) {
+		for (var j=1;j<board.H-1;j++) {
+			if(board.isBloc[i][j] == p.blocId){
 				board.isBloc[i][j] = B_EMPTY;
+				xpDropCounter++;
+				if(xpDropCounter == FREQ_XP_DROP_ONDEATH){
+					xpDropCounter = 0;
+					board.isXp[i][j] = true;
+					numXp++;
+				}
+			}
 		}
 	}
 }
@@ -366,7 +422,6 @@ function killPlayer(p) {
 }*/
 
 /** Launch game **/
-/*setInterval(moveloop, 1000 / 60);*/
 setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);

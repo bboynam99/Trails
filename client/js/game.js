@@ -142,8 +142,8 @@ var gameOver = false;
 //
 /** Game drawing constants **/
 //
-var HALF_BLOC_SIZE_DISPLAY = 25; // the left and right padding in px when drawing a bloc
-var BLOC_TO_PIXELS = 50; // the size of a game bloc
+var HALF_BLOC_SIZE_DISPLAY = 18; // the left and right padding in px when drawing a bloc
+var BLOC_TO_PIXELS = 36; // the size of a game bloc
 var BLOC_COLOR = '#777';
 var EMPTY_BLOC = -1;
 var SIDE_WALL = -2;
