@@ -23,11 +23,15 @@ Game.prototype.handleNetwork = function(socket) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
 				board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
-				// TODO: need to find a better solution to this. sometimes, a new bloc that hasn't registered with server yet disapears, causing flicker.
-				//if(board.isBloc[i][j]  != [player.hue]) // this prevents a display sync problem
-					board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
+				/*if(player.lastPos && player.lastPos[0] == i && player.lastPos[1] == j) // never update last pos, client is always right
+					continue;*/
+				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
 			}
 		}
+		// overide with short term client knowledge (to avoid flicker)
+		lastFewBlocs.forEach( function(p) {
+			board.isBloc[p[0]][p[1]] = player.hue;
+		});
 		colors = newBoard.colors;
 	});
 	
@@ -77,8 +81,14 @@ Game.prototype.handleLogic = function() {
 	// move player
 	var dt = tick();
 	var isNewBloc = movePlayer(player, dt);
-	if(isNewBloc)
+	if(isNewBloc) {
 		socket.emit('playerMove', {x:player.x, y:player.y});
+		if(player.lastPos) { // this queue remembers last few values to reduce flicker from client-server disagreement
+			lastFewBlocs[lastFewBlocsId] = player.lastPos;
+			lastFewBlocsId = (lastFewBlocsId+1) % FEW_BLOCS_SIZE;
+		}
+		
+	}
 	updatePlayerDirection();
 	if (otherPlayers)
 		otherPlayers.forEach( function(o) {
@@ -126,7 +136,7 @@ Game.prototype.handleGraphics = function(gfx) {
 	if(player.cooldown > 0) {
 		gfx.fillStyle = '#fff';
 		gfx.font = 'bold 12px Verdana';
-		gfx.fillText(Math.round(player.cooldown), screenWidth * 0.5, screenHeight * 0.5);
+		gfx.fillText(Math.ceil(player.cooldown), screenWidth * 0.5, screenHeight * 0.5);
 	}
 }
 
@@ -143,7 +153,8 @@ var board = {
 };
 var colors = []; // contains all colors to be drawn, received from server.
 var links = [];
-
+var lastFewBlocs = []; //client will always trust itself for board state of these pts
+var lastFewBlocsId = 0; var FEW_BLOCS_SIZE = 5;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 
 function initBoard(H,W){
@@ -428,26 +439,34 @@ var KEY_DOWN = 40;
 var KEY_SPACE = 32;
 var NO_KEY = -1;
 
-var TAP_SIDE_THRESHOLD = 0.35;
+var TAP_CENTER_REL_DIST = 0.05;
 function bindClickTap(c) {
 	c.addEventListener('click', function(event) {
 		// figure out where the tap happened
-		var key = null;
-		if(event.x < TAP_SIDE_THRESHOLD * screenWidth)
-			key = KEY_LEFT;
-		else if(event.x > (1-TAP_SIDE_THRESHOLD) * screenWidth)
-			key = KEY_RIGHT;
-		else if(event.y < TAP_SIDE_THRESHOLD * screenHeight)
-			key = KEY_UP;
-		else if(event.y > TAP_SIDE_THRESHOLD * screenHeight)
-			key = KEY_DOWN;
-		else{
+		var w2 = screenWidth/2,
+			h2 = screenHeight/2;
+		var rx = event.x-w2,
+			ry = h2-event.y;
+		if(Math.sqrt(rx*rx+ry*ry) <= screenWidth * TAP_CENTER_REL_DIST)
+		{
 			if(gameOver) // SPACE BAR LOGIC
 				socket.emit('respawnRequest', playerName);
 			else if(!gameOver)
 				usePowerup();
 			return;
 		}
+		
+		var key = null;
+		var deg = 180 * Math.atan2(rx, ry) / Math.PI;
+		if(deg < -135 || deg > 135)
+			key = KEY_DOWN;
+		else if(deg < -45)
+			key = KEY_LEFT;
+		else if(deg > 45)
+			key = KEY_RIGHT;
+		else
+			key = KEY_UP;
+
 		applyKeyboardDirectionLogic(key);
 	}, false);
 }

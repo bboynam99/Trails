@@ -13,6 +13,7 @@ var INITIAL_VELOCITY = 5.0;
 var NUM_XP_ONBOARD = 25;
 var MAX_PLAYER_SPEED = 10;
 var FREQ_XP_DROP_ONDEATH = 15; // xp drop freq
+var MAX_XP_ONBOARD = 100; // xp drop freq
 var SPEED_BOOST_PER_XP = .2; // speed gain per xp
 var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 2; // link will end after this
@@ -455,6 +456,8 @@ function killPlayer(p) {
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
+			if(numXp >= MAX_XP_ONBOARD)
+				break;
 			if(board.isBloc[i][j] == p.blocId){
 				board.isBloc[i][j] = B_EMPTY;
 				xpDropCounter++;
