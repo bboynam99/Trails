@@ -11,7 +11,7 @@ app.use(express.static(__dirname + '/../client'));
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 5.0;
 var NUM_XP_ONBOARD = 25;
-var MAX_PLAYER_SPEED = 12;
+var MAX_PLAYER_SPEED = 10;
 var FREQ_XP_DROP_ONDEATH = 15; // xp drop freq
 var SPEED_BOOST_PER_XP = .2; // speed gain per xp
 var LINK_START = 0.25; // link will show after this (ms)
@@ -62,6 +62,7 @@ var blocIdLUT = {};
 var blocIdGenerator = 11;
 var links = []; // link maps between players
 var colorsLUT = [];
+var leaderBoard = [];
 
 //
 /** Socket communication (game events) **/
@@ -209,7 +210,6 @@ function gameloop() {
 	spawnXp();
 	// update links
 	updateLinks(dt);
-    // update leaderboard
 }
 
 var EMPTY_BLOC = -1;
@@ -314,7 +314,7 @@ function toClientLink(serverLink) {
 		y0: serverLink.fromP.y,
 		x1: serverLink.toP.x,
 		y1: serverLink.toP.y,
-		progress: (serverLink.dt - LINK_START) / LINK_END
+		progress: (serverLink.dt - LINK_START) / (LINK_END - LINK_START)
 	}
 }
 
@@ -374,6 +374,25 @@ function spawnXp() {
 			numXp++;
 		}
 	}
+}
+
+function updateLeaderboard() {
+	var sortedUsers = users.filter(function(a){return !a.isDead})
+		.sort(function(a, b){return b.xp-a.xp});
+	
+	leaderBoard = [];
+	for (var i=0; i<Math.min(sortedUsers.length,10); i++)
+	{
+		leaderBoard.push({
+			name: sortedUsers[i].name/*,
+			score: sortedUsers[i].score*/
+		});
+	}
+	
+	users.forEach( function(u) {
+		if(!u.isDead)
+			sockets[u.id].emit('updateLeaderBoard', leaderBoard);
+	});
 }
 
 function updateLinks(dt) {
@@ -458,3 +477,4 @@ function killPlayer(p) {
 setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);
+setInterval(updateLeaderboard, 2000);

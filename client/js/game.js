@@ -34,19 +34,20 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('updatePlayers', function (updatedPlayers, newLinks) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
-			for ( var i=0; i < otherPlayers.length; i++ ) {
-				var o = otherPlayers[i];
-				if (o.name === p.name && o.hue === p.hue) { // if it's the same dude?
-					if(o.dx == p.dx && o.dy == p.dy) { // if the direction hasn't changed
-						if(Math.abs(o.x - p.x) + Math.abs(o.y - p.y) < (Math.abs(o.dx) + Math.abs(o.dy)) * o.velocity * 0.1) {
-							// keep the old values if the delta is small (to avoid jitter)
-							p.x = otherPlayers[i].x;
-							p.y = otherPlayers[i].y;
+			if(otherPlayers)
+				for ( var i=0; i < otherPlayers.length; i++ ) {
+					var o = otherPlayers[i];
+					if (o.name === p.name && o.hue === p.hue) { // if it's the same dude?
+						if(o.dx == p.dx && o.dy == p.dy) { // if the direction hasn't changed
+							if(Math.abs(o.x - p.x) + Math.abs(o.y - p.y) < (Math.abs(o.dx) + Math.abs(o.dy)) * o.velocity * 0.1) {
+								// keep the old values if the delta is small (to avoid jitter)
+								p.x = otherPlayers[i].x;
+								p.y = otherPlayers[i].y;
+							}
 						}
+						break;
 					}
-					break;
 				}
-			}
 		});
 		otherPlayers = updatedPlayers;
 		links = newLinks;
@@ -62,6 +63,10 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	socket.on('newHue', function (v) {
 		player.hue = v;
+	});
+
+	socket.on('updateLeaderBoard', function (leaderBoard) {
+		displayLeaderBoard(leaderBoard);
 	});	
 }
 
@@ -351,6 +356,17 @@ function drawLinks(gfx) {
 			}
 			gfx.stroke();
 		});
+}
+
+function displayLeaderBoard(leaderboard) {
+	var status = '<h1>Leaderboard</h1>';
+	i = 1;
+	if(leaderboard)
+		leaderboard.forEach( function(l) {
+			status += '<br />';
+			status += (i++) + '. ' + l.name;
+		});
+	document.getElementById('status').innerHTML = status;
 }
 
 function boardToScreen(x,y,isfloat){

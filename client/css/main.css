@@ -1,5 +1,5 @@
 * {
-	font-family: sans-serif;
+	font-family: Verdana;
 	font-size: 14px;
 }
 
@@ -98,3 +98,20 @@ canvas {
   display: none;
   font-size : 12px;
 }
+
+#status {
+    position: absolute;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    color: #FFF;
+    font-size: 16.1px;
+    top: 10px;
+    right: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+
+#status h1 {
+    font-size: 25px;
+}
+
