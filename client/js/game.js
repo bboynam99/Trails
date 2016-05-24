@@ -84,7 +84,8 @@ Game.prototype.handleLogic = function() {
 		otherPlayers.forEach( function(o) {
 			movePlayer(o, dt);
 		});
-	
+	// update cooldown
+	player.cooldown = Math.max(0, player.cooldown - dt);
 }
 
 Game.prototype.handleGraphics = function(gfx) {
@@ -120,6 +121,13 @@ Game.prototype.handleGraphics = function(gfx) {
 		});
 	// drawLinks
 	drawLinks(gfx);
+	
+	//draw cooldown marker
+	if(player.cooldown > 0) {
+		gfx.fillStyle = '#fff';
+		gfx.font = 'bold 12px Verdana';
+		gfx.fillText(Math.round(player.cooldown), screenWidth * 0.5, screenHeight * 0.5);
+	}
 }
 
 //
@@ -161,8 +169,6 @@ var gameOver = false;
 var HALF_BLOC_SIZE_DISPLAY = 18; // the left and right padding in px when drawing a bloc
 var BLOC_TO_PIXELS = 36; // the size of a game bloc
 var BLOC_COLOR = '#777';
-var EMPTY_BLOC = -1;
-var SIDE_WALL = -2;
 var XP_RADIUS = 10;
 var XP_STROKE = 3;
 var XP_COLOR = '#9900ff';
@@ -172,7 +178,13 @@ var LINK_SCOLOR = '#00264d';
 var LINK_INNER = 7;
 var LINK_OUTER = 15;
 var LINK_JITTER = 5; // adds a jitter effect (in px)
-
+//
+/** Game logic constants **/
+//
+var EMPTY_BLOC = -1;
+var SIDE_WALL = -2;
+var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
+var POWERUP_COOLDOWN = 10;
 //
 /** Game logic helpers **/
 //
@@ -358,6 +370,22 @@ function drawLinks(gfx) {
 		});
 }
 
+function usePowerup() {
+	if(player && player.cooldown == 0){
+		tx = Math.round(player.x + player.dx * TELEPORT_DISTANCE);
+		ty = Math.round(player.y + player.dy * TELEPORT_DISTANCE);
+		
+		if(tx > 1 && ty > 1 && tx < board.W-2 && ty < board.H-2) {
+			// TODO: trigger cooldown
+			player.x = tx;
+			player.y = ty;
+			socket.emit('powerupUsed',tx, ty);
+			// TODO: draw a big red circle (explosion) on land
+			player.cooldown = POWERUP_COOLDOWN;
+		}
+	}
+}
+
 function displayLeaderBoard(leaderboard) {
 	var status = '<h1>Leaderboard</h1>';
 	i = 1;
@@ -413,8 +441,11 @@ function bindClickTap(c) {
 			key = KEY_UP;
 		else if(event.y > TAP_SIDE_THRESHOLD * screenHeight)
 			key = KEY_DOWN;
-		else if(gameOver){ // SPACE BAR LOGIC
-			socket.emit('respawnRequest', playerName);
+		else{
+			if(gameOver) // SPACE BAR LOGIC
+				socket.emit('respawnRequest', playerName);
+			else if(!gameOver)
+				usePowerup();
 			return;
 		}
 		applyKeyboardDirectionLogic(key);
@@ -434,6 +465,8 @@ function directionDown(event) {
 	} else if(key == KEY_SPACE) {
 		if(gameOver)
 			socket.emit('respawnRequest', playerName);
+		else if(!gameOver)
+			usePowerup();
 	}
 }
 

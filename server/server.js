@@ -18,12 +18,12 @@ var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 2; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
+var POWERUP_CLEAR_RADIUS = 6; // upond landing, a circle of this radius will be cleared
 
 // Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
 var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
-
 
 //
 /** Game variables **/
@@ -111,9 +111,8 @@ io.on('connection', function (socket) {
 			dx:player.dx,
 			dy:player.dy,
 			velocity:player.velocity,
-			xp:player.xp,
-			level: player.level,
 			hue: player.hue,
+			cooldown: 0
 		}, {
 			boardW:board.W,
 			boardH:board.H
@@ -182,7 +181,11 @@ io.on('connection', function (socket) {
 			emitRespawn();
 		}
     });
-	
+	socket.on('powerupUsed', function(x,y) {
+		player.x = x;
+		player.y = y;
+		handlePlayerPowerup(player);
+	});
 });	
 
 var serverPort = process.env.PORT || config.port;
@@ -367,8 +370,8 @@ function findGoodSpawn() {
 
 function spawnXp() {
 	if(numXp < NUM_XP_ONBOARD) {
-		var x = getRandomInt(1,board.W - 1);
-		var y = getRandomInt(1,board.H - 1);
+		var x = getRandomInt(1,board.W - 2); // cannot spawn on borders
+		var y = getRandomInt(1,board.H - 2);
 		if(!board.isXp[x][y] && !playerBoard[x][y]) {
 			board.isXp[x][y] = true;
 			numXp++;
@@ -461,6 +464,20 @@ function killPlayer(p) {
 					numXp++;
 				}
 			}
+		}
+	}
+}
+
+function handlePlayerPowerup(player) {
+	var x = player.x, y = player.y;
+	X0 = Math.max(x - POWERUP_CLEAR_RADIUS,1);
+	X1 = Math.min(x + POWERUP_CLEAR_RADIUS, board.W-2);
+	Y0 = Math.max(y - POWERUP_CLEAR_RADIUS,1);
+	Y1 = Math.min(y + POWERUP_CLEAR_RADIUS, board.H-2);
+	for (var i=losX0;i<=losX1;i++) {
+		for (var j=losY0;j<=losY1;j++) {
+			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= POWERUP_CLEAR_RADIUS)
+				board.isBloc[i][j] = EMPTY_BLOC;
 		}
 	}
 }
