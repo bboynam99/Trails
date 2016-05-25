@@ -236,7 +236,6 @@ function updatePlayerDirection() {
 	player.y += player.dy * (delta);
 	lastDirectionPressed = comboDirectionPressed;
 	comboDirectionPressed = NO_KEY;
-	updateTurnTargetPosition();
 }
 
 function changePlayerDirection(x,y) {
@@ -256,7 +255,7 @@ function movePlayer(p, dt) {
 		
 	// check if it's a new value
 	var value = false;
-	if(p.lastPos && (p.lastPos[0] != squareX || p.lastPos[1] != squareY)) {
+	if (p.lastPos && (p.lastPos[0] != squareX || p.lastPos[1] != squareY)) {
 		value = true;
 	}
 	p.lastPos = [squareX, squareY];
@@ -382,12 +381,11 @@ function drawLinks(gfx) {
 }
 
 function usePowerup() {
-	if(player && player.cooldown == 0){
-		tx = Math.round(player.x + player.dx * TELEPORT_DISTANCE);
-		ty = Math.round(player.y + player.dy * TELEPORT_DISTANCE);
+	if(player && player.cooldown == 0) {
+		var tx = Math.round(player.x + player.dx * TELEPORT_DISTANCE);
+		var ty = Math.round(player.y + player.dy * TELEPORT_DISTANCE);
 		
 		if(tx > 1 && ty > 1 && tx < board.W-2 && ty < board.H-2) {
-			// TODO: trigger cooldown
 			player.x = tx;
 			player.y = ty;
 			socket.emit('powerupUsed',tx, ty);

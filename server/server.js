@@ -123,6 +123,7 @@ io.on('connection', function (socket) {
 
 		
 	socket.on('playerMove', function (newPosition) {
+		//console.log('moving from ('+player.x+','+player.y+') to ('+newPosition.x+','+newPosition.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
 		if(!player.isDead) {
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newPosition.x), ny = Math.round(newPosition.y);
@@ -322,9 +323,6 @@ function toClientLink(serverLink) {
 	}
 }
 
-/*function dist(otherPlayer,player) {
-  return Math.max(Math.abs(otherPlayer.x - player.x),Math.abs(otherPlayer.y - player.y)) < PLAYER_LOS_RANGE;
-}*/
 
 /** Game Logic Helpers **/
 var lastUpdate = Date.now(); // used to compute the time delta between frames
@@ -340,7 +338,7 @@ function movePlayer(p, dt) {
 	p.x += p.dx * p.velocity * dt;
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
-	if(p.lastX != x || p.lastY != y)
+	if (p.lastX != x || p.lastY != y)
 		board.isBloc[p.lastX][p.lastY] = p.blocId;
 	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
 }
