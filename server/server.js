@@ -456,15 +456,15 @@ function killPlayer(p) {
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
-			if(numXp >= MAX_XP_ONBOARD)
-				break;
 			if(board.isBloc[i][j] == p.blocId){
 				board.isBloc[i][j] = B_EMPTY;
 				xpDropCounter++;
 				if(xpDropCounter == FREQ_XP_DROP_ONDEATH){
 					xpDropCounter = 0;
-					board.isXp[i][j] = true;
-					numXp++;
+					if(numXp < MAX_XP_ONBOARD) {
+						board.isXp[i][j] = true;
+						numXp++;
+					}
 				}
 			}
 		}
