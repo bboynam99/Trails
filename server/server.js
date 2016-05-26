@@ -11,16 +11,16 @@ app.use(express.static(__dirname + '/../client'));
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 5.0;
 var NUM_XP_ONBOARD = 25;
-var MAX_PLAYER_SPEED = 10;
-var FREQ_XP_DROP_ONDEATH = 15; // xp drop freq
-var MAX_XP_ONBOARD = 100; // xp drop freq
-var SPEED_BOOST_PER_XP = .2; // speed gain per xp
+var MAX_PLAYER_SPEED = 15;
+var FREQ_XP_DROP_ONDEATH = 4; // xp drop freq
+var MAX_XP_ONBOARD = 250; // xp drop freq
+var SPEED_BOOST_PER_XP = .04; // speed gain per xp
 var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 2; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
 var POWERUP_CLEAR_RADIUS = 6; // upond landing, a circle of this radius will be cleared
-
+var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
 // Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
@@ -86,7 +86,7 @@ io.on('connection', function (socket) {
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		xp: 0,
 		level: 1,
-		hue: Math.round(Math.random() * 360),
+		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
 		blocId: blocIdGenerator
@@ -103,7 +103,7 @@ io.on('connection', function (socket) {
 	
 	// emit [player, board]
 	function emitRespawn() {
-		player.hue = Math.round(Math.random() * 360); // player is no longer part of any other hue groups!
+		player.hue = getUnusedColor(); // player is no longer part of any other hue groups!
 		colorsLUT[player.blocId] = player.hue;
 		player.isDead = false;
 		socket.emit('playerSpawn',{
@@ -339,8 +339,22 @@ function movePlayer(p, dt) {
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
 	if (p.lastX != x || p.lastY != y)
-		board.isBloc[p.lastX][p.lastY] = p.blocId;
+		if(Math.abs(p.lastX - x) + Math.abs(p.lastY - y) > 1) // sometimes lag will cause client not to send packets, which will skip blocs. This interpolates to fill the void.
+			fillLine(x,y,p.lastX, p.lastY, p.blocId);
+		else
+			board.isBloc[p.lastX][p.lastY] = p.blocId;
 	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
+}
+function fillLine(x0, y0, x1, y1, v){
+	var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
+	var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
+	var err = dx-dy;
+	do{
+	board.isBloc[x0][y0] = v;
+		var e2 = 2*err;
+		if (e2 >-dy){ err -= dy; x0 += sx; }
+		if (e2 < dx){ err += dx; y0 += sy; }
+	}while(!((x0==x1) && (y0==y1)))
 }
 
 // returns a position and direction [x y dx dy] to spawn
@@ -386,8 +400,8 @@ function updateLeaderboard() {
 	for (var i=0; i<Math.min(sortedUsers.length,10); i++)
 	{
 		leaderBoard.push({
-			name: sortedUsers[i].name/*,
-			score: sortedUsers[i].score*/
+			name: sortedUsers[i].name,
+			score: sortedUsers[i].xp
 		});
 	}
 	
@@ -454,10 +468,10 @@ function killPlayer(p) {
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
-			if(board.isBloc[i][j] == p.blocId){
+			if(board.isBloc[i][j] == p.blocId) {
 				board.isBloc[i][j] = B_EMPTY;
 				xpDropCounter++;
-				if(xpDropCounter == FREQ_XP_DROP_ONDEATH){
+				if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
 					xpDropCounter = 0;
 					if(numXp < MAX_XP_ONBOARD) {
 						board.isXp[i][j] = true;
@@ -478,9 +492,33 @@ function handlePlayerPowerup(player) {
 	for (var i=losX0;i<=losX1;i++) {
 		for (var j=losY0;j<=losY1;j++) {
 			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= POWERUP_CLEAR_RADIUS)
-				board.isBloc[i][j] = EMPTY_BLOC;
+				if(board.isBloc[i][j] != B_BORDERS)
+					board.isBloc[i][j] = EMPTY_BLOC;
 		}
 	}
+}
+
+function checkHeartBeat() {
+	var now = Date.now();
+    var dt = now - lastUpdate;
+	
+		users.forEach( function(u) {
+			if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
+				killPlayer(u);
+		});
+}
+
+function getUnusedColor() {
+	if(users.length >= 360) // there aren't any free colors.
+		return Math.round(Math.random() * 360);
+	
+	var blackList = new Array(360);
+	
+	do {
+		c = Math.round(Math.random() * 360);
+	} while(blackList[c]);
+	return c;
+	
 }
 
 /*function toBoardRange(x,y) {
@@ -496,3 +534,4 @@ setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);
 setInterval(updateLeaderboard, 2000);
+setInterval(checkHeartBeat, 2000);

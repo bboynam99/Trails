@@ -134,9 +134,28 @@ Game.prototype.handleGraphics = function(gfx) {
 	
 	//draw cooldown marker
 	if(player.cooldown > 0) {
-		gfx.fillStyle = '#fff';
+		var bx = screenWidth * 0.5 - HALF_BLOC_SIZE_DISPLAY*.8,
+			by = screenHeight * 0.5 - HALF_BLOC_SIZE_DISPLAY*1.5;
+		var ex = screenWidth * 0.5 + HALF_BLOC_SIZE_DISPLAY*.8,
+			ey = by;
+		gfx.strokeStyle = '#000';
+		gfx.lineWidth = 10;
+		gfx.beginPath();
+		gfx.moveTo(bx,by);
+		gfx.lineTo(ex,ey);
+		gfx.stroke();
+		
+		ex = bx + (ex-bx)*(1 - (player.cooldown / POWERUP_COOLDOWN));
+		gfx.strokeStyle = '#fff';
+		gfx.lineWidth = 8;
+		gfx.beginPath();
+		gfx.moveTo(bx,by);
+		gfx.lineTo(ex,ey);
+		gfx.stroke();
+		
+		/*gfx.fillStyle = '#fff';
 		gfx.font = 'bold 12px Verdana';
-		gfx.fillText(Math.ceil(player.cooldown), screenWidth * 0.5, screenHeight * 0.5);
+		gfx.fillText(Math.ceil(player.cooldown), screenWidth * 0.5, screenHeight * 0.5);*/
 	}
 }
 
@@ -391,6 +410,7 @@ function usePowerup() {
 			socket.emit('powerupUsed',tx, ty);
 			// TODO: draw a big red circle (explosion) on land
 			player.cooldown = POWERUP_COOLDOWN;
+			clearFutureTurns(); // this is necessary, otherwise player goes nuts
 		}
 	}
 }
@@ -401,7 +421,7 @@ function displayLeaderBoard(leaderboard) {
 	if(leaderboard)
 		leaderboard.forEach( function(l) {
 			status += '<br />';
-			status += (i++) + '. ' + l.name;
+			status += '<span style="float:left">' + (i++) + '. ' + l.name + '</span>&nbsp;&nbsp;&nbsp;' + '<span style="float:right">' + l.score + '</span>';
 		});
 	document.getElementById('status').innerHTML = status;
 }
@@ -498,6 +518,11 @@ function applyKeyboardDirectionLogic(key) {
 	}
 }
 
+function clearFutureTurns() {
+	turnPosition = [0,0];
+	lastDirectionPressed = NO_KEY;
+	comboDirectionPressed = NO_KEY;
+}
 var turnPosition = [0,0];
 function updateTurnTargetPosition() {
 	turnPosition[0] = Math.round(player.x + player.dx/2);
