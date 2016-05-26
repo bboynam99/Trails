@@ -155,7 +155,7 @@ io.on('connection', function (socket) {
 			
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag, will not always hit boundary walls)
 				colorsLUT[board.isBloc[nx][ny]] != player.hue && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
-				killPlayer(player); 
+				killPlayer(player, true); 
 			} else if(nx != x || ny != y) {
 				playerBoard[x][y] = null;
 				playerBoard[nx][ny] = player;
@@ -170,7 +170,7 @@ io.on('connection', function (socket) {
 	});
 	
 	socket.on('disconnect', function () {
-		killPlayer(player);
+		killPlayer(player, false);
 		delete sockets[player.id];
 		delete colorsLUT[player.blocId];
 		var index = users.indexOf(player);
@@ -195,9 +195,9 @@ io.on('connection', function (socket) {
     });
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 0)
-			killPlayer(player);
+			killPlayer(player, false);
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 1) // a small lag grace
-			killPlayer(player);
+			killPlayer(player, false);
 		else {
 			player.x = x;
 			player.y = y;
@@ -481,7 +481,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function killPlayer(p) {
+function killPlayer(p, isDropXp) {
 	xpDropCounter = 0;
 	p.isDead = true;
 	sockets[p.id].emit('playerDied');
@@ -491,12 +491,14 @@ function killPlayer(p) {
 		for (var j=1;j<board.H-1;j++) {
 			if(board.isBloc[i][j] == p.blocId) {
 				board.isBloc[i][j] = B_EMPTY;
-				xpDropCounter++;
-				if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
-					xpDropCounter = 0;
-					if(numXp < MAX_XP_ONBOARD) {
-						board.isXp[i][j] = true;
-						numXp++;
+				if(isDropXp){
+					xpDropCounter++;
+					if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
+						xpDropCounter = 0;
+						if(numXp < MAX_XP_ONBOARD) {
+							board.isXp[i][j] = true;
+							numXp++;
+						}
 					}
 				}
 			}
@@ -526,7 +528,7 @@ function checkHeartBeat() {
 	
 		users.forEach( function(u) {
 			if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
-				killPlayer(u);
+				killPlayer(u, false);
 		});
 }
 
@@ -535,7 +537,7 @@ function checkSync() {
 	users.forEach( function(u) {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
-				killPlayer(u);
+				killPlayer(u, false);
 				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
 			}
 	});
