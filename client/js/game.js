@@ -254,6 +254,7 @@ function updatePlayerDirection() {
 	player.y += player.dy * (delta);
 	lastDirectionPressed = comboDirectionPressed;
 	comboDirectionPressed = NO_KEY;
+	updateTurnTargetPosition();
 }
 
 function changePlayerDirection(x,y) {

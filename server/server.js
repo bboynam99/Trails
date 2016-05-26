@@ -87,8 +87,8 @@ io.on('connection', function (socket) {
 		dx: 0.0,
 		dy: 0.0,
 		velocity: INITIAL_VELOCITY, // in blocs per second
+		cooldown: POWERUP_COOLDOWN,
 		xp: 0,
-		level: 1,
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
@@ -117,7 +117,7 @@ io.on('connection', function (socket) {
 			dy:player.dy,
 			velocity:player.velocity,
 			hue: player.hue,
-			cooldown: 0,
+			cooldown: player.cooldown,
 			maxCooldown: POWERUP_COOLDOWN,
 			teleportDist: TELEPORT_DISTANCE
 		}, {
@@ -194,10 +194,15 @@ io.on('connection', function (socket) {
 		}
     });
 	socket.on('powerupUsed', function(x,y) {
-		
-		player.x = x;
-		player.y = y;
-		handlePlayerPowerup(player);
+		if(player.cooldown > 0)
+			killPlayer(player);
+		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 1) // a small lag grace
+			killPlayer(player);
+		else {
+			player.x = x;
+			player.y = y;
+			handlePlayerPowerup(player);
+		}
 	});
 });	
 
@@ -226,6 +231,10 @@ function gameloop() {
 	spawnXp();
 	// update links
 	updateLinks(dt);
+	// update cooldowns
+	users.forEach( function(u) {
+		u.cooldown = Math.max(0, u.cooldown - dt);
+	});	
 }
 
 var EMPTY_BLOC = -1;
@@ -508,6 +517,7 @@ function handlePlayerPowerup(player) {
 					board.isBloc[i][j] = EMPTY_BLOC;
 		}
 	}
+	player.cooldown = POWERUP_COOLDOWN;
 }
 
 function checkHeartBeat() {

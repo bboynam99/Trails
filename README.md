@@ -9,7 +9,5 @@ This is private repo for the next big online io game.
 3. Run nmp to start the server: "C:\Program Files\nodejs\npm.cmd" start
 
 ## TODO list:
-- server authority validation (move, powerup)
-- bug: quickly pressing top left while going right will make the player switch from right to left. this is unintended.
-- visual effect related to teleport
+- visual effect related to teleport (not sure what i'd like yet)
 - possible memory leak server side.
