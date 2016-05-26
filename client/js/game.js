@@ -145,7 +145,7 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.lineTo(ex,ey);
 		gfx.stroke();
 		
-		ex = bx + (ex-bx)*(1 - (player.cooldown / POWERUP_COOLDOWN));
+		ex = bx + (ex-bx)*(1 - (player.cooldown / player.maxCooldown));
 		gfx.strokeStyle = '#fff';
 		gfx.lineWidth = 8;
 		gfx.beginPath();
@@ -213,8 +213,7 @@ var LINK_JITTER = 5; // adds a jitter effect (in px)
 //
 var EMPTY_BLOC = -1;
 var SIDE_WALL = -2;
-var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
-var POWERUP_COOLDOWN = 10;
+
 //
 /** Game logic helpers **/
 //
@@ -401,15 +400,15 @@ function drawLinks(gfx) {
 
 function usePowerup() {
 	if(player && player.cooldown == 0) {
-		var tx = Math.round(player.x + player.dx * TELEPORT_DISTANCE);
-		var ty = Math.round(player.y + player.dy * TELEPORT_DISTANCE);
+		var tx = Math.round(player.x + player.dx * player.teleportDist);
+		var ty = Math.round(player.y + player.dy * player.teleportDist);
 		
 		if(tx > 1 && ty > 1 && tx < board.W-2 && ty < board.H-2) {
 			player.x = tx;
 			player.y = ty;
 			socket.emit('powerupUsed',tx, ty);
 			// TODO: draw a big red circle (explosion) on land
-			player.cooldown = POWERUP_COOLDOWN;
+			player.cooldown = player.maxCooldown;
 			clearFutureTurns(); // this is necessary, otherwise player goes nuts
 		}
 	}

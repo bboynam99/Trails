@@ -20,7 +20,10 @@ var LINK_END = 2; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
 var POWERUP_CLEAR_RADIUS = 6; // upond landing, a circle of this radius will be cleared
+var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
+var POWERUP_COOLDOWN = 10;
 var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
+var MAX_DESYNC_TOLERENCE = 0.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
@@ -89,7 +92,8 @@ io.on('connection', function (socket) {
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
-		blocId: blocIdGenerator
+		blocId: blocIdGenerator,
+		desyncCounter: 0 // the cumulated delta between client and server
 	};
 	colorsLUT[player.blocId] = player.hue;
 	blocIdLUT[blocIdGenerator] = player;
@@ -113,7 +117,9 @@ io.on('connection', function (socket) {
 			dy:player.dy,
 			velocity:player.velocity,
 			hue: player.hue,
-			cooldown: 0
+			cooldown: 0,
+			maxCooldown: POWERUP_COOLDOWN,
+			teleportDist: TELEPORT_DISTANCE
 		}, {
 			boardW:board.W,
 			boardH:board.H
@@ -125,10 +131,14 @@ io.on('connection', function (socket) {
 	socket.on('playerMove', function (newPosition) {
 		//console.log('moving from ('+player.x+','+player.y+') to ('+newPosition.x+','+newPosition.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
 		if(!player.isDead) {
+			// check if new position is reasonable. If sketchy, close socket.
+			var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
+			var clientTravelTime = (Math.abs(newPosition.x - player.lastX) + Math.abs(newPosition.y - player.lastY)) / player.velocity;
+			player.desyncCounter += serverTravelTime - clientTravelTime;
+			
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newPosition.x), ny = Math.round(newPosition.y);
-			// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
-			player.lastHeartbeat = new Date().getTime(); // TODO: use this for a check (interval function), if no movement after 5 sec... kill!
+			player.lastHeartbeat = new Date().getTime(); // see function checkHeartBeat
 			player.x = newPosition.x;
 			player.y = newPosition.y;
 			board.isBloc[x][y] = player.blocId;
@@ -184,6 +194,7 @@ io.on('connection', function (socket) {
 		}
     });
 	socket.on('powerupUsed', function(x,y) {
+		
 		player.x = x;
 		player.y = y;
 		handlePlayerPowerup(player);
@@ -466,6 +477,7 @@ function killPlayer(p) {
 	p.isDead = true;
 	sockets[p.id].emit('playerDied');
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
+	p.desyncCounter = 0;
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
 			if(board.isBloc[i][j] == p.blocId) {
@@ -508,6 +520,17 @@ function checkHeartBeat() {
 		});
 }
 
+// this function kicks players that are out of synch with the game clock.
+function checkSync() {
+	users.forEach( function(u) {
+		if(!u.isDead)
+			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
+				killPlayer(u);
+				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
+			}
+	});
+}
+
 function getUnusedColor() {
 	if(users.length >= 360) // there aren't any free colors.
 		return Math.round(Math.random() * 360);
@@ -535,3 +558,4 @@ setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);
 setInterval(updateLeaderboard, 2000);
 setInterval(checkHeartBeat, 2000);
+setInterval(checkSync, 500); // security function

@@ -9,9 +9,7 @@ This is private repo for the next big online io game.
 3. Run nmp to start the server: "C:\Program Files\nodejs\npm.cmd" start
 
 ## TODO list:
-- Assign colors intelligently: on spawn, assigned a unique unused color, ideally different visually different than the colors in use.
-- server authority validation (move, powerup, cooldowns)
-- possible memory leak server side.
-- visual effect related to teleport
-- better cooldown tracking
+- server authority validation (move, powerup)
 - bug: quickly pressing top left while going right will make the player switch from right to left. this is unintended.
+- visual effect related to teleport
+- possible memory leak server side.
