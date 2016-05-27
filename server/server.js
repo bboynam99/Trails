@@ -202,8 +202,8 @@ io.on('connection', function (socket) {
 		if(player.cooldown > 0)
 			killPlayer(player, false);
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 4){ // a small lag grace
-			killPlayer(player, false);
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) + ', which is greater than ' + 4);
+			killPlayer(player, false);
 		} else {
 			player.x = x;
 			player.y = y;
@@ -554,24 +554,24 @@ function checkSync() {
 	users.forEach( function(u) {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
-				killPlayer(u, false);
 				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
+				killPlayer(u, false);
 			}
 	});
 }
 
 function getUnusedColor() {
 	if(users.length >= 35) // there aren't any free colors.
-		return Math.round(Math.random() * 35) * 5;
+		return Math.round(Math.random() * 35) * 10;
 	
 	var blackList = new Array(360);
 	
-	colorsLUT.forEach( function(u) {
-		blackList[u.hue] = true;
+	colorsLUT.forEach( function(c) {
+		blackList[c] = true;
 	});
 	
 	do {
-		c = Math.round(Math.random() * 71) * 5;
+		c = Math.round(Math.random() * 35) * 10;
 	} while(blackList[c]);
 	return c;
 	
