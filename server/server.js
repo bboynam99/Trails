@@ -19,9 +19,9 @@ var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 2; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
-var POWERUP_CLEAR_RADIUS = 6; // upond landing, a circle of this radius will be cleared
+var POWERUP_CLEAR_RADIUS = 8; // upond landing, a circle of this radius will be cleared
 var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
-var POWERUP_COOLDOWN = 10;
+var POWERUP_COOLDOWN = 5;
 var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
 var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
@@ -529,8 +529,8 @@ function handlePlayerPowerup(player) {
 	X1 = Math.min(x + POWERUP_CLEAR_RADIUS, board.W-2);
 	Y0 = Math.max(y - POWERUP_CLEAR_RADIUS,1);
 	Y1 = Math.min(y + POWERUP_CLEAR_RADIUS, board.H-2);
-	for (var i=losX0;i<=losX1;i++) {
-		for (var j=losY0;j<=losY1;j++) {
+	for (var i=X0;i<=X1;i++) {
+		for (var j=Y0;j<=Y1;j++) {
 			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= POWERUP_CLEAR_RADIUS)
 				if(board.isBloc[i][j] != B_BORDERS)
 					board.isBloc[i][j] = EMPTY_BLOC;
