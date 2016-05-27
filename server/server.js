@@ -370,7 +370,8 @@ function fillLine(x0, y0, x1, y1, v){
 	var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
 	var err = dx-dy;
 	do{
-	board.isBloc[x0][y0] = v;
+		if(board.isBloc[x0][y0] == B_EMPTY)
+			board.isBloc[x0][y0] = v;
 		var e2 = 2*err;
 		if (e2 >-dy){ err -= dy; x0 += sx; }
 		if (e2 < dx){ err += dx; y0 += sy; }
