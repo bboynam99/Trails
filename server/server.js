@@ -561,10 +561,14 @@ function checkSync() {
 }
 
 function getUnusedColor() {
-	if(users.length >= 71) // there aren't any free colors.
-		return Math.round(Math.random() * 71) * 5;
+	if(users.length >= 35) // there aren't any free colors.
+		return Math.round(Math.random() * 35) * 5;
 	
 	var blackList = new Array(360);
+	
+	colorsLUT.forEach( function(u) {
+		blackList[u.hue] = true;
+	});
 	
 	do {
 		c = Math.round(Math.random() * 71) * 5;
