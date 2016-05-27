@@ -59,6 +59,8 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	socket.on('playerDied', function () {
 		gameOver = true;
+		lastFewBlocs = [];
+		lastFewBlocsId = 0;
 	});
 	
 	socket.on('newSpeed', function (v) {
