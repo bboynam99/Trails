@@ -201,10 +201,10 @@ io.on('connection', function (socket) {
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 0)
 			killPlayer(player, false);
-		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 4) // a small lag grace
+		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 4){ // a small lag grace
 			killPlayer(player, false);
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) + ', which is greater than ' + 4);
-		else {
+		} else {
 			player.x = x;
 			player.y = y;
 			handlePlayerPowerup(player);
