@@ -10,7 +10,7 @@ app.use(express.static(__dirname + '/../client'));
 //
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 5.0;
-var NUM_XP_ONBOARD = 25;
+var NUM_XP_ONBOARD = 100;
 var MAX_PLAYER_SPEED = 15;
 var FREQ_XP_DROP_ONDEATH = 4; // xp drop freq
 var MAX_XP_ONBOARD = 250; // xp drop freq
