@@ -263,6 +263,10 @@ function sendUpdatesBoard() {
 				y0: losY0,
 				y1: losY1
 			};
+			if(losX1-losX0 <= 0 || losY1-losY0){ // NOT SURE WHY THIS IS NEEDED...
+				killPlayer(u, false);
+				continue;
+			}
 			
 			var colors = {};
 			newBoard.isBloc = new Array(losX1-losX0);
