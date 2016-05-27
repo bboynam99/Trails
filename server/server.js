@@ -201,8 +201,9 @@ io.on('connection', function (socket) {
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 0)
 			killPlayer(player, false);
-		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 1) // a small lag grace
+		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 4) // a small lag grace
 			killPlayer(player, false);
+			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) + ', which is greater than ' + 4);
 		else {
 			player.x = x;
 			player.y = y;
@@ -372,16 +373,20 @@ function movePlayer(p, dt) {
 	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
 }
 function fillLine(x0, y0, x1, y1, v){
-	var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
-	var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
-	var err = dx-dy;
-	do{
-		if(board.isBloc[x0][y0] == B_EMPTY)
-			board.isBloc[x0][y0] = v;
-		var e2 = 2*err;
-		if (e2 >-dy){ err -= dy; x0 += sx; }
-		if (e2 < dx){ err += dx; y0 += sy; }
-	}while(!((x0==x1) && (y0==y1)))
+	try {
+		var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
+		var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
+		var err = dx-dy;
+		do{
+			if(board.isBloc[x0][y0] == B_EMPTY)
+				board.isBloc[x0][y0] = v;
+			var e2 = 2*err;
+			if (e2 >-dy){ err -= dy; x0 += sx; }
+			if (e2 < dx){ err += dx; y0 += sy; }
+		}while(!((x0==x1) && (y0==y1)))
+	} catch(err)
+		console.log('fail to draw line at ' + x0 + ',' + y0 + '.');
+	}
 }
 
 // returns a position and direction [x y dx dy] to spawn
