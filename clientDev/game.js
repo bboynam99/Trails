@@ -325,7 +325,10 @@ function drawBoard(gfx){
 			gfx.fillStyle = BLOC_COLOR;
 		} else {
 			targetC = colors[c];
-			gfx.fillStyle = 'hsl(' + targetC + ', 50%, 80%)';
+			if(targetC == player.hue) // self color is darker
+				gfx.fillStyle = 'hsl(' + targetC + ', 70%, 40%)';
+			else
+				gfx.fillStyle = 'hsl(' + targetC + ', 50%, 80%)';
 		}
 		
 		var pad = HALF_BLOC_SIZE_DISPLAY*2;
