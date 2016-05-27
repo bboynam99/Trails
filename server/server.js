@@ -485,6 +485,7 @@ function getRandomInt(min, max) {
 function killPlayer(p, isDropXp) {
 	xpDropCounter = 0;
 	p.isDead = true;
+	p.xp = 0;
 	sockets[p.id].emit('playerDied');
 	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 	p.desyncCounter = 0;
