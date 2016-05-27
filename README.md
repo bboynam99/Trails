@@ -13,3 +13,7 @@ This is private repo for the next big online io game.
 - possible memory leak server side.
 - doesn't work on mobile
 - doesn't work on IE
+- server crash (see log)
+- teleport sometimes doesn't clear and kills you
+- limit the number of colors
+- trail decay? the board fills very quickly
