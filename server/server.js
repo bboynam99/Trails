@@ -384,7 +384,7 @@ function fillLine(x0, y0, x1, y1, v){
 			if (e2 >-dy){ err -= dy; x0 += sx; }
 			if (e2 < dx){ err += dx; y0 += sy; }
 		}while(!((x0==x1) && (y0==y1)))
-	} catch(err)
+	} catch(err) {
 		console.log('fail to draw line at ' + x0 + ',' + y0 + '.');
 	}
 }
