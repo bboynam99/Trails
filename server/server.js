@@ -102,7 +102,7 @@ io.on('connection', function (socket) {
 	users.push(player);
 	
 	socket.on('myNameIs', function (name) {
-		if(!name || name.length > 50){
+		if(!name || name.length > 15){
 			killPlayer(player, false); 
 			socket.disconnect();
 		}
