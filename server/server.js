@@ -23,7 +23,7 @@ var POWERUP_CLEAR_RADIUS = 6; // upond landing, a circle of this radius will be 
 var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
 var POWERUP_COOLDOWN = 10;
 var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
-var MAX_DESYNC_TOLERENCE = 0.5; // the number of sec of desync tolerated before the player is kicked
+var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
@@ -489,28 +489,32 @@ function getRandomInt(min, max) {
 }
 
 function killPlayer(p, isDropXp) {
-	xpDropCounter = 0;
-	p.isDead = true;
-	p.xp = 0;
-	sockets[p.id].emit('playerDied');
-	playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
-	p.desyncCounter = 0;
-	for (var i=1;i<board.W-1;i++) {
-		for (var j=1;j<board.H-1;j++) {
-			if(board.isBloc[i][j] == p.blocId) {
-				board.isBloc[i][j] = B_EMPTY;
-				if(isDropXp){
-					xpDropCounter++;
-					if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
-						xpDropCounter = 0;
-						if(numXp < MAX_XP_ONBOARD) {
-							board.isXp[i][j] = true;
-							numXp++;
+	try {
+		xpDropCounter = 0;
+		p.isDead = true;
+		p.xp = 0;
+		sockets[p.id].emit('playerDied');
+		playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
+		p.desyncCounter = 0;
+		for (var i=1;i<board.W-1;i++) {
+			for (var j=1;j<board.H-1;j++) {
+				if(board.isBloc[i][j] == p.blocId) {
+					board.isBloc[i][j] = B_EMPTY;
+					if(isDropXp){
+						xpDropCounter++;
+						if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
+							xpDropCounter = 0;
+							if(numXp < MAX_XP_ONBOARD) {
+								board.isXp[i][j] = true;
+								numXp++;
+							}
 						}
 					}
 				}
 			}
 		}
+	} catch(err) {
+		console.log('error while killing player: ' + err);
 	}
 }
 
@@ -555,7 +559,7 @@ function getUnusedColor() {
 	if(users.length >= 71) // there aren't any free colors.
 		return Math.round(Math.random() * 71) * 5;
 	
-	var blackList = new Array(71);
+	var blackList = new Array(360);
 	
 	do {
 		c = Math.round(Math.random() * 71) * 5;
