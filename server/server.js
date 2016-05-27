@@ -34,8 +34,8 @@ var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 //
 var users = []; // players and their data
 var board = { // game board
-	H: 250,
-	W: 250,
+	H: 175,
+	W: 175,
 	isBloc: null,
 	isXp: null,
 };
