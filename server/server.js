@@ -102,6 +102,11 @@ io.on('connection', function (socket) {
 	users.push(player);
 	
 	socket.on('myNameIs', function (name) {
+		if(!name || name.length > 50){
+			killPlayer(player, false); 
+			socket.disconnect();
+		}
+			
 		player['name'] = name;
 	});	
 	

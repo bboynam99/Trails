@@ -11,3 +11,5 @@ This is private repo for the next big online io game.
 ## TODO list:
 - visual effect related to teleport (not sure what i'd like yet)
 - possible memory leak server side.
+- doesn't work on mobile
+- doesn't work on IE
