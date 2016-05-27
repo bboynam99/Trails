@@ -265,33 +265,32 @@ function sendUpdatesBoard() {
 			};
 			if(losX1-losX0 <= 0 || losY1-losY0){ // NOT SURE WHY THIS IS NEEDED...
 				killPlayer(u, false);
-				continue;
-			}
-			
-			var colors = {};
-			newBoard.isBloc = new Array(losX1-losX0);
-			newBoard.isXp = new Array(losX1-losX0);
-			for (var i=0;i<losX1-losX0;i++) {
-				newBoard.isBloc[i] = new Array(losY1-losY0);
-				newBoard.isXp[i] = new Array(losY1-losY0);
-				for (var j=0;j<losY1-losY0;j++) {
-					// this is for board and colors
-					var id = board.isBloc[i+losX0][j+losY0];
-					newBoard.isBloc[i][j] = EMPTY_BLOC;
-					if(id > B_EMPTY && blocIdLUT[id]) {
-						var c = blocIdLUT[id].hue;
-						newBoard.isBloc[i][j] = c;
-						colors[c] = true;
-					} else if (id == B_BORDERS) {
-						newBoard.isBloc[i][j] = SIDE_WALL;
+			} else {
+				var colors = {};
+				newBoard.isBloc = new Array(losX1-losX0);
+				newBoard.isXp = new Array(losX1-losX0);
+				for (var i=0;i<losX1-losX0;i++) {
+					newBoard.isBloc[i] = new Array(losY1-losY0);
+					newBoard.isXp[i] = new Array(losY1-losY0);
+					for (var j=0;j<losY1-losY0;j++) {
+						// this is for board and colors
+						var id = board.isBloc[i+losX0][j+losY0];
+						newBoard.isBloc[i][j] = EMPTY_BLOC;
+						if(id > B_EMPTY && blocIdLUT[id]) {
+							var c = blocIdLUT[id].hue;
+							newBoard.isBloc[i][j] = c;
+							colors[c] = true;
+						} else if (id == B_BORDERS) {
+							newBoard.isBloc[i][j] = SIDE_WALL;
+						}
+						// this is for xp
+						newBoard.isXp[i][j] = board.isXp[i+losX0][j+losY0];
 					}
-					// this is for xp
-					newBoard.isXp[i][j] = board.isXp[i+losX0][j+losY0];
 				}
-			}
-			newBoard.colors = Object.keys(colors);
+				newBoard.colors = Object.keys(colors);
 
-			sockets[u.id].emit('updateBoard', newBoard);
+				sockets[u.id].emit('updateBoard', newBoard);
+			}
 		}
 	});
 }
