@@ -101,8 +101,13 @@ io.on('connection', function (socket) {
 	
 	users.push(player);
 	
+	function validNick(n) {
+		var regex = /^\w?[ \w]{0,14}$/;
+		return regex.exec(n) !== null;
+	}
+
 	socket.on('myNameIs', function (name) {
-		if(!name || name.length > 15){
+		if(!name || !validNick(name)){
 			killPlayer(player, false); 
 			socket.disconnect();
 		}
