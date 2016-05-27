@@ -1,7 +1,7 @@
 {
-  "name": "Trails.io",
+  "name": "nameless.io",
   "version": "0.2.0",
-  "description": "Trails.io is the next gen browser game we've all be waiting for.",
+  "description": "nameless.io is the next gen browser game we've all be waiting for.",
   "main": "server/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
