@@ -11,17 +11,17 @@ app.use(express.static(__dirname + '/../client'));
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 5.0;
 var NUM_XP_ONBOARD = 100;
-var MAX_PLAYER_SPEED = 15;
+var MAX_PLAYER_SPEED = 30;
 var FREQ_XP_DROP_ONDEATH = 4; // xp drop freq
 var MAX_XP_ONBOARD = 250; // xp drop freq
-var SPEED_BOOST_PER_XP = .04; // speed gain per xp
+var SPEED_BOOST_PER_XP = 0.5; // speed gain per xp
 var LINK_START = 0.25; // link will show after this (ms)
-var LINK_END = 2; // link will end after this
+var LINK_END = 5; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
-var POWERUP_CLEAR_RADIUS = 8; // upond landing, a circle of this radius will be cleared
-var TELEPORT_DISTANCE = 10; // TODO: this should be received from server
-var POWERUP_COOLDOWN = 5;
+var POWERUP_CLEAR_RADIUS = 4; // upond landing, a circle of this radius will be cleared
+var TELEPORT_DISTANCE = 8; // TODO: this should be received from server
+var POWERUP_COOLDOWN =10;
 var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
 var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
@@ -34,8 +34,8 @@ var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 //
 var users = []; // players and their data
 var board = { // game board
-	H: 175,
-	W: 175,
+	H: 50,
+	W: 50,
 	isBloc: null,
 	isXp: null,
 };
