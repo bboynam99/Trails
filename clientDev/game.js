@@ -3,6 +3,7 @@ function Game() { };
 /** Game loops **/
 //
 Game.prototype.handleNetwork = function(socket) {
+	s = socket;
 	socket.emit('myNameIs', playerName);
 	
 	var c = document.getElementById('cvs');
@@ -22,7 +23,7 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('updateBoard', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
-				board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
+				//board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
 				/*if(player.lastPos && player.lastPos[0] == i && player.lastPos[1] == j) // never update last pos, client is always right
 					continue;*/
 				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
@@ -84,13 +85,16 @@ Game.prototype.handleLogic = function() {
 	var dt = tick();
 	var isNewBloc = movePlayer(player, dt);
 	if(isNewBloc) {
-		socket.emit('playerMove', {x:player.x, y:player.y});
 		if(player.lastPos) { // this queue remembers last few values to reduce flicker from client-server disagreement
 			lastFewBlocs[lastFewBlocsId] = player.lastPos;
 			lastFewBlocsId = (lastFewBlocsId+1) % FEW_BLOCS_SIZE;
+			// send event if next square is different!
+			if(player.lastPos[0] <= 1 || player.lastPos[1] <= 1 || player.lastPos[0] >= board.W-2 || player.lastPos[1] >= board.H-2){
+				updatePosition();
+			}
 		}
-		
 	}
+	
 	updatePlayerDirection();
 	if (otherPlayers)
 		otherPlayers.forEach( function(o) {
@@ -198,7 +202,7 @@ var gameOver = false;
 //
 /** Game drawing constants **/
 //
-var HALF_BLOC_SIZE_DISPLAY = 17; // the left and right padding in px when drawing a bloc
+var HALF_BLOC_SIZE_DISPLAY = 18; // the left and right padding in px when drawing a bloc
 var BLOC_TO_PIXELS = 36; // the size of a game bloc
 var BLOC_COLOR = '#777';
 var XP_RADIUS = 10;
@@ -259,10 +263,10 @@ function updatePlayerDirection() {
 	updateTurnTargetPosition();
 }
 
-function changePlayerDirection(x,y) {
-	player.dx = x;
-	player.dy = y;
-	socket.emit('directionChange',{dx:player.dx, dy:player.dy});
+function changePlayerDirection(dx,dy) {
+	player.dx = dx;
+	player.dy = dy;
+	updatePosition();
 }
 
 // player position update. returns true if the bloc has changed.
@@ -537,3 +541,9 @@ function updateTurnTargetPosition() {
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+function updatePosition() {
+	if(player && !gameOver && socket)
+		socket.emit('mv', {x:player.x, y:player.y, dx:player.dx, dy:player.dy});
+}
+setInterval(updatePosition, 1000);

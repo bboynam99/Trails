@@ -9,20 +9,20 @@ app.use(express.static(__dirname + '/../client'));
 /** Game Constants **/
 //
 var SPAWN_SPACE_NEEDED = 5;
-var INITIAL_VELOCITY = 5.0;
+var INITIAL_VELOCITY = 12.0;
 var NUM_XP_ONBOARD = 100;
 var MAX_PLAYER_SPEED = 30;
 var FREQ_XP_DROP_ONDEATH = 4; // xp drop freq
 var MAX_XP_ONBOARD = 250; // xp drop freq
 var SPEED_BOOST_PER_XP = 0.5; // speed gain per xp
 var LINK_START = 0.25; // link will show after this (ms)
-var LINK_END = 5; // link will end after this
+var LINK_END = 3; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
-var LINK_SUSTAIN = 10; // link will stay alive at this range (hysteresis)
+var LINK_SUSTAIN = 8; // link will stay alive at this range (hysteresis)
 var POWERUP_CLEAR_RADIUS = 4; // upond landing, a circle of this radius will be cleared
 var TELEPORT_DISTANCE = 8; // TODO: this should be received from server
 var POWERUP_COOLDOWN =10;
-var MAX_HEARTBEAT_KICK = 5000; // player will be killed after no input (ms);
+var MAX_HEARTBEAT_KICK = 2000; // player will be killed after no input (ms);
 var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
 var B_EMPTY = 0;
@@ -37,17 +37,17 @@ var board = { // game board
 	H: 50,
 	W: 50,
 	isBloc: null,
-	isXp: null,
+	isNode: null,
 };
 var numXp = 0;
 // init board
 board.isBloc = new Array(board.W);
-board.isXp = new Array(board.W);
+board.isNode = new Array(board.W);
 for (var i=0;i<board.W;i++) {
 	board.isBloc[i] = new Array(board.H);
-	board.isXp[i] = new Array(board.H);
+	board.isNode[i] = new Array(board.H);
 	for (var j=0;j<board.H;j++) {
-		board.isXp[i][j] = false;
+		board.isNode[i][j] = false;
 		board.isBloc[i][j] = B_EMPTY;
 		if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
 			board.isBloc[i][j] = B_BORDERS;
@@ -84,11 +84,11 @@ io.on('connection', function (socket) {
 		y: spawnPosition[1],
 		lastX: spawnPosition[0],
 		lastY: spawnPosition[1],
-		dx: 0.0,
-		dy: 0.0,
+		dx: spawnPosition[2],
+		dy: spawnPosition[3],
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		cooldown: POWERUP_COOLDOWN,
-		xp: 0,
+		pts: 0,
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
@@ -108,7 +108,7 @@ io.on('connection', function (socket) {
 
 	socket.on('myNameIs', function (name) {
 		if(!name || !validNick(name)){
-			killPlayer(player, false); 
+			killPlayer(player, 'invalid name'); 
 			socket.disconnect();
 		}
 			
@@ -138,49 +138,45 @@ io.on('connection', function (socket) {
 	emitRespawn();
 
 		
-	socket.on('playerMove', function (newPosition) {
-		//console.log('moving from ('+player.x+','+player.y+') to ('+newPosition.x+','+newPosition.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
+	socket.on('mv', function (newInfo) {
+		//console.log('moving from ('+player.x+','+player.y+') to ('+newInfo.x+','+newInfo.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
 		if(!player.isDead) {
+			player.dx = newInfo.dx;
+			player.dy = newInfo.dy;
+		
 			// check if new position is reasonable. If sketchy, close socket.
 			var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
-			var clientTravelTime = (Math.abs(newPosition.x - player.lastX) + Math.abs(newPosition.y - player.lastY)) / player.velocity;
+			var clientTravelTime = (Math.abs(newInfo.x - player.lastX) + Math.abs(newInfo.y - player.lastY)) / player.velocity;
 			player.desyncCounter += serverTravelTime - clientTravelTime;
 			
 			var x = player.lastX, y = player.lastY;
-			var nx = Math.round(newPosition.x), ny = Math.round(newPosition.y);
+			var nx = Math.round(newInfo.x), ny = Math.round(newInfo.y);
 			player.lastHeartbeat = new Date().getTime(); // see function checkHeartBeat
-			player.x = newPosition.x;
-			player.y = newPosition.y;
-			board.isBloc[x][y] = player.blocId;
-			player.lastX = nx;
-			player.lastY = ny;
+			player.x = newInfo.x;
+			player.y = newInfo.y;
 			
-			if(board.isXp[nx][ny]) {
-				board.isXp[nx][ny] = false;
+			/*if(board.isNode[nx][ny]) {
+				board.isNode[nx][ny] = false;
 				numXp--;
 				player.velocity = Math.min(player.velocity + SPEED_BOOST_PER_XP, MAX_PLAYER_SPEED);
-				player.xp++;
+				player.pts++;
 				sockets[player.id].emit('newSpeed', player.velocity);
-			}
+			}*/
 			
-			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1) || // need to explicitly check if still on board (because of the lag, will not always hit boundary walls)
-				colorsLUT[board.isBloc[nx][ny]] != player.hue && board.isBloc[nx][ny] > B_KILLSYOUTHRESHOLD) {
-				killPlayer(player, true); 
-			} else if(nx != x || ny != y) {
-				playerBoard[x][y] = null;
+			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
+				killPlayer(player, 'player is outside the playable area.'); 
+			}else if(nx != x || ny != y) { // if position has changed 
+				playerBoard[x][y] = null; // update player position LUT
 				playerBoard[nx][ny] = player;
+				player.lastX = nx;
+				player.lastY = ny;
+				traceLine(nx, ny, x, y, player.blocId, player);
 			}
 		}
 	});
-	socket.on('directionChange', function (direction) {
-		if(!player.isDead){
-			player.dx = direction.dx;
-			player.dy = direction.dy;
-		}
-	});
-	
+
 	socket.on('disconnect', function () {
-		killPlayer(player, false);
+		killPlayer(player, 'disconnected, killing his avatar');
 		delete sockets[player.id];
 		delete colorsLUT[player.blocId];
 		var index = users.indexOf(player);
@@ -205,13 +201,15 @@ io.on('connection', function (socket) {
     });
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 0)
-			killPlayer(player, false);
+			killPlayer(player, 'used a powerup while still on CD');
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) > 4){ // a small lag grace
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - TELEPORT_DISTANCE) + ', which is greater than ' + 4);
-			killPlayer(player, false);
+			killPlayer(player, 'teleported way too far.');
 		} else {
 			player.x = x;
 			player.y = y;
+			player.lastX = Math.round(x);
+			player.lastY = Math.round(y);
 			handlePlayerPowerup(player);
 		}
 	});
@@ -244,7 +242,17 @@ function gameloop() {
 	updateLinks(dt);
 	// update cooldowns
 	users.forEach( function(u) {
-		u.cooldown = Math.max(0, u.cooldown - dt);
+		try{
+			if (!u.isDead) {
+				u.cooldown = Math.max(0, u.cooldown - dt);
+				if(colorsLUT[board.isBloc[Math.round(u.x + u.dx*.5)][Math.round(u.y + u.dy*.5)]] == u.hue)
+					u.pts -= dt * 50; // losing points!
+				else
+					u.pts += dt * 10;
+				if(u.pts <= 0)
+					killPlayer(u,'ran out of points')
+			}
+			}catch(e){} // sometimes the player is outside and this causes a crash... it's not important.
 	});	
 }
 
@@ -263,7 +271,7 @@ function sendUpdatesBoard() {
 			var newBoard = {
 				isBloc: null,
 				colors: null,
-				isXp: null,
+				//isNode: null,
 				x0: losX0,
 				x1: losX1,
 				y0: losY0,
@@ -272,10 +280,10 @@ function sendUpdatesBoard() {
 			if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // NOT SURE WHY THIS IS NEEDED...
 				var colors = {};
 				newBoard.isBloc = new Array(losX1-losX0);
-				newBoard.isXp = new Array(losX1-losX0);
+				//newBoard.isNode = new Array(losX1-losX0);
 				for (var i=0;i<losX1-losX0;i++) {
 					newBoard.isBloc[i] = new Array(losY1-losY0);
-					newBoard.isXp[i] = new Array(losY1-losY0);
+					//newBoard.isNode[i] = new Array(losY1-losY0);
 					for (var j=0;j<losY1-losY0;j++) {
 						// this is for board and colors
 						var id = board.isBloc[i+losX0][j+losY0];
@@ -288,7 +296,7 @@ function sendUpdatesBoard() {
 							newBoard.isBloc[i][j] = SIDE_WALL;
 						}
 						// this is for xp
-						newBoard.isXp[i][j] = board.isXp[i+losX0][j+losY0];
+						//newBoard.isNode[i][j] = board.isNode[i+losX0][j+losY0];
 					}
 				}
 				newBoard.colors = Object.keys(colors);
@@ -371,24 +379,39 @@ function movePlayer(p, dt) {
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
 	if (p.lastX != x || p.lastY != y)
-		if(Math.abs(p.lastX - x) + Math.abs(p.lastY - y) > 1) // sometimes lag will cause client not to send packets, which will skip blocs. This interpolates to fill the void.
-			fillLine(x,y,p.lastX, p.lastY, p.blocId);
+		if(Math.abs(p.lastX - x) + Math.abs(p.lastY - y) > 1) 
+			traceLine(x,y,p.lastX, p.lastY, p.blocId);// sometimes lag will cause client not to send packets, which will skip blocs. This interpolates to fill the void.
 		else
 			board.isBloc[p.lastX][p.lastY] = p.blocId;
 	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
 }
-function fillLine(x0, y0, x1, y1, v){
+function traceLine(x0, y0, x1, y1, v, p) { //also checks for collision (and possibly kills p)
 	try {
-		var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
-		var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
-		var err = dx-dy;
-		do{
+		var dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
+		if(dx != 0 && dy != 0) return; // some weird lag happened. avoid infinite loop.
+		
+		while((x0!=x1) || (y0!=y1)) {
 			if(board.isBloc[x0][y0] == B_EMPTY)
 				board.isBloc[x0][y0] = v;
-			var e2 = 2*err;
+			else if(p && colorsLUT[board.isBloc[x0][y0]] != p.hue && board.isBloc[x0][y0] > B_KILLSYOUTHRESHOLD) {
+				hasCrashedInto(blocIdLUT[board.isBloc[x0][y0]], p)
+				killPlayer(p,'the player stepped on another line of value ' + board.isBloc[x0][y0]);
+				break;
+			}
+			x0 += dx;
+			y0 += dy;
+		}
+		//console.log('NEW DRAW - from ' + x0 + ',' + y0 + ' to ' + x1 + ',' + y1);
+		/*var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
+		var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
+		var err = dx-dy;
+		while(!((x0==x1) && (y0==y1))){
 			if (e2 >-dy){ err -= dy; x0 += sx; }
 			if (e2 < dx){ err += dx; y0 += sy; }
-		}while(!((x0==x1) && (y0==y1)))
+			//console.log('filling ' + x0 + ',' + y0);
+
+			var e2 = 2*err;
+		}*/
 	} catch(err) {
 		console.log('fail to draw line at ' + x0 + ',' + y0 + '.');
 	}
@@ -422,8 +445,8 @@ function spawnXp() {
 	if(numXp < NUM_XP_ONBOARD) {
 		var x = getRandomInt(1,board.W - 2); // cannot spawn on borders
 		var y = getRandomInt(1,board.H - 2);
-		if(!board.isXp[x][y] && !playerBoard[x][y]) {
-			board.isXp[x][y] = true;
+		if(!board.isNode[x][y] && !playerBoard[x][y]) {
+			board.isNode[x][y] = true;
 			numXp++;
 		}
 	}
@@ -431,14 +454,14 @@ function spawnXp() {
 
 function updateLeaderboard() {
 	var sortedUsers = users.filter(function(a){return !a.isDead})
-		.sort(function(a, b){return b.xp-a.xp});
+		.sort(function(a, b){return b.pts-a.pts});
 	
 	leaderBoard = [];
 	for (var i=0; i<Math.min(sortedUsers.length,10); i++)
 	{
 		leaderBoard.push({
 			name: sortedUsers[i].name,
-			score: sortedUsers[i].xp
+			score: Math.round(sortedUsers[i].pts)
 		});
 	}
 	
@@ -472,7 +495,7 @@ function checkForLink(playerA, playerB) {
 			if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
 				if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
 					if(!(playerA in links) && !(playerB in links)) {
-						if(playerA.xp > playerB.xp) {
+						if(playerA.pts > playerB.pts) {
 							console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
 							links[playerA] = {
 								fromP: playerA,
@@ -497,12 +520,25 @@ function checkForLink(playerA, playerB) {
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+function hasCrashedInto(crashee, crasher) {
+	crashee.pts += crasher.pts;
+	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
+		for (var j=1;j<board.H-1;j++) {
+			if(board.isBloc[i][j] == crashee.blocId) {
+				board.isBloc[i][j] = B_EMPTY;
+			}
+		}
+	}
+	
+	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name);
+}
 
-function killPlayer(p, isDropXp) {
+function killPlayer(p, reason) {
 	try {
+		console.log('Killing player ' + p.name + ' because: "' + reason)
 		xpDropCounter = 0;
 		p.isDead = true;
-		p.xp = 0;
+		p.pts = 0;
 		sockets[p.id].emit('playerDied');
 		playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 		p.desyncCounter = 0;
@@ -510,16 +546,16 @@ function killPlayer(p, isDropXp) {
 			for (var j=1;j<board.H-1;j++) {
 				if(board.isBloc[i][j] == p.blocId) {
 					board.isBloc[i][j] = B_EMPTY;
-					if(isDropXp){
+					/*if(isDropXp){
 						xpDropCounter++;
 						if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
 							xpDropCounter = 0;
 							if(numXp < MAX_XP_ONBOARD) {
-								board.isXp[i][j] = true;
+								board.isNode[i][j] = true;
 								numXp++;
 							}
 						}
-					}
+					}*/
 				}
 			}
 		}
@@ -538,7 +574,7 @@ function handlePlayerPowerup(player) {
 		for (var j=Y0;j<=Y1;j++) {
 			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= POWERUP_CLEAR_RADIUS)
 				if(board.isBloc[i][j] != B_BORDERS)
-					board.isBloc[i][j] = EMPTY_BLOC;
+					board.isBloc[i][j] = B_EMPTY;
 		}
 	}
 	player.cooldown = POWERUP_COOLDOWN;
@@ -549,8 +585,9 @@ function checkHeartBeat() {
     var dt = now - lastUpdate;
 	
 		users.forEach( function(u) {
-			if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
-				killPlayer(u, false);
+			if(!u.isDead)
+				if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
+					killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK);
 		});
 }
 
@@ -560,7 +597,7 @@ function checkSync() {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
 				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
-				killPlayer(u, false);
+				killPlayer(u, 'desync too high');
 			}
 	});
 }
