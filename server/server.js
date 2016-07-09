@@ -10,24 +10,30 @@ app.use(express.static(__dirname + '/../client'));
 //
 var SPAWN_SPACE_NEEDED = 5;
 var INITIAL_VELOCITY = 12.0;
-var NUM_XP_ONBOARD = 100;
-var MAX_PLAYER_SPEED = 30;
-var FREQ_XP_DROP_ONDEATH = 4; // xp drop freq
-var MAX_XP_ONBOARD = 250; // xp drop freq
-var SPEED_BOOST_PER_XP = 0.5; // speed gain per xp
+var DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
+var LOSING_POINTS_PER_SEC = -150; // The number of points loss per second while on self-track
+var NUM_POWERUPS_ONBOARD = 3;
 var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 3; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
 var LINK_SUSTAIN = 8; // link will stay alive at this range (hysteresis)
 var POWERUP_CLEAR_RADIUS = 4; // upond landing, a circle of this radius will be cleared
 var TELEPORT_DISTANCE = 8; // TODO: this should be received from server
-var POWERUP_COOLDOWN =10;
+var POWERUP_COOLDOWN = 10;
 var MAX_HEARTBEAT_KICK = 2000; // player will be killed after no input (ms);
 var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 // Flags for the bloc board state
 var B_EMPTY = 0;
 var B_BORDERS = 10;
 var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
+// PowerUp flags
+var PU_NONE = 0;
+var PU_ALLIANCE = 1;
+var PU_TELEPORT = 2;
+var PU_STEAL = 3;
+var PU_SHIELD = 4;
+var PU_MISSLE = 5;
+var maxPowerUpId = 5; // UPDATE THIS everytime a new power up is added
 
 //
 /** Game variables **/
@@ -37,17 +43,17 @@ var board = { // game board
 	H: 50,
 	W: 50,
 	isBloc: null,
-	isNode: null,
+	isPowerUp: null,
 };
-var numXp = 0;
+var numPowerUpsOnBoard = 0;
 // init board
 board.isBloc = new Array(board.W);
-board.isNode = new Array(board.W);
+board.isPowerUp = new Array(board.W);
 for (var i=0;i<board.W;i++) {
 	board.isBloc[i] = new Array(board.H);
-	board.isNode[i] = new Array(board.H);
+	board.isPowerUp[i] = new Array(board.H);
 	for (var j=0;j<board.H;j++) {
-		board.isNode[i][j] = false;
+		board.isPowerUp[i][j] = PU_NONE;
 		board.isBloc[i][j] = B_EMPTY;
 		if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
 			board.isBloc[i][j] = B_BORDERS;
@@ -89,6 +95,7 @@ io.on('connection', function (socket) {
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		cooldown: POWERUP_COOLDOWN,
 		pts: 0,
+		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
@@ -155,13 +162,12 @@ io.on('connection', function (socket) {
 			player.x = newInfo.x;
 			player.y = newInfo.y;
 			
-			/*if(board.isNode[nx][ny]) {
-				board.isNode[nx][ny] = false;
-				numXp--;
-				player.velocity = Math.min(player.velocity + SPEED_BOOST_PER_XP, MAX_PLAYER_SPEED);
-				player.pts++;
-				sockets[player.id].emit('newSpeed', player.velocity);
-			}*/
+			if(board.isPowerUp[nx][ny]) {
+				board.isPowerUp[nx][ny] = PU_NONE;
+				numPowerUpsOnBoard--;
+				//TODO: give power up to player
+				//sockets[player.id].emit('newSpeed', player.velocity);
+			}
 			
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
 				killPlayer(player, 'player is outside the playable area.'); 
@@ -237,20 +243,27 @@ function gameloop() {
 	// interpolate player position
 	moveloop(dt);
 	// spawn xp
-	spawnXp();
+	spawnPowerUps();
 	// update links
 	updateLinks(dt);
-	// update cooldowns
+	// update cooldowns, scores and velocity
 	users.forEach( function(u) {
 		try{
 			if (!u.isDead) {
+				// cooldown
 				u.cooldown = Math.max(0, u.cooldown - dt);
-				if(colorsLUT[board.isBloc[Math.round(u.x + u.dx*.5)][Math.round(u.y + u.dy*.5)]] == u.hue)
-					u.pts -= dt * 50; // losing points!
-				else
-					u.pts += dt * 10;
+				// score
+				if(colorsLUT[board.isBloc[Math.round(u.x + u.dx*.5)][Math.round(u.y + u.dy*.5)]] == u.hue) {
+					u.pts += dt * LOSING_POINTS_PER_SEC; // losing points!
+					u.dpts = LOSING_POINTS_PER_SEC;
+				} else {
+					u.pts += dt * DEFAULT_POINTS_PER_SEC;
+					u.dpts = DEFAULT_POINTS_PER_SEC;
+				}
 				if(u.pts <= 0)
 					killPlayer(u,'ran out of points')
+				// velocity
+				u.velocity = INITIAL_VELOCITY / (0.000071 * u.pts + 1); // at 10k pts, speed = 7
 			}
 			}catch(e){} // sometimes the player is outside and this causes a crash... it's not important.
 	});	
@@ -271,7 +284,7 @@ function sendUpdatesBoard() {
 			var newBoard = {
 				isBloc: null,
 				colors: null,
-				//isNode: null,
+				isPowerUp: null,
 				x0: losX0,
 				x1: losX1,
 				y0: losY0,
@@ -280,10 +293,10 @@ function sendUpdatesBoard() {
 			if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // NOT SURE WHY THIS IS NEEDED...
 				var colors = {};
 				newBoard.isBloc = new Array(losX1-losX0);
-				//newBoard.isNode = new Array(losX1-losX0);
+				newBoard.isPowerUp = new Array(losX1-losX0);
 				for (var i=0;i<losX1-losX0;i++) {
 					newBoard.isBloc[i] = new Array(losY1-losY0);
-					//newBoard.isNode[i] = new Array(losY1-losY0);
+					newBoard.isPowerUp[i] = new Array(losY1-losY0);
 					for (var j=0;j<losY1-losY0;j++) {
 						// this is for board and colors
 						var id = board.isBloc[i+losX0][j+losY0];
@@ -295,8 +308,8 @@ function sendUpdatesBoard() {
 						} else if (id == B_BORDERS) {
 							newBoard.isBloc[i][j] = SIDE_WALL;
 						}
-						// this is for xp
-						//newBoard.isNode[i][j] = board.isNode[i+losX0][j+losY0];
+						// this is for power ups
+						newBoard.isPowerUp[i][j] = board.isPowerUp[i+losX0][j+losY0];
 					}
 				}
 				newBoard.colors = Object.keys(colors);
@@ -335,7 +348,9 @@ function sendUpdatesPlayers() {
 								dy:o.dy,
 								velocity:o.velocity,
 								hue: o.hue,
-								name: o.name
+								name: o.name,
+								pts: o.pts,
+								dpts: o.dpts
 							});
 							l = links[otherPlayers];
 							if(l && l.dt >= LINK_START) {
@@ -348,7 +363,13 @@ function sendUpdatesPlayers() {
 					}
 				}
 			}
-			sockets[u.id].emit('updatePlayers', otherPlayers, newLinks);
+			var selfPlayer = {
+				velocity:u.velocity,
+				pts: u.pts,
+				dpts: u.dpts
+			};
+							
+			sockets[u.id].emit('updatePlayers', otherPlayers, newLinks, selfPlayer);
 		}
 	});
 }
@@ -441,13 +462,13 @@ function findGoodSpawn() {
 	return [x,y,dx,dy];
 }
 
-function spawnXp() {
-	if(numXp < NUM_XP_ONBOARD) {
+function spawnPowerUps() {
+	if(numPowerUpsOnBoard < NUM_POWERUPS_ONBOARD) {
 		var x = getRandomInt(1,board.W - 2); // cannot spawn on borders
 		var y = getRandomInt(1,board.H - 2);
-		if(!board.isNode[x][y] && !playerBoard[x][y]) {
-			board.isNode[x][y] = true;
-			numXp++;
+		if(!board.isPowerUp[x][y] && !playerBoard[x][y]) {
+			board.isPowerUp[x][y] = getRandomInt(1,maxPowerUpId);
+			numPowerUpsOnBoard++;
 		}
 	}
 }
@@ -550,9 +571,9 @@ function killPlayer(p, reason) {
 						xpDropCounter++;
 						if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
 							xpDropCounter = 0;
-							if(numXp < MAX_XP_ONBOARD) {
-								board.isNode[i][j] = true;
-								numXp++;
+							if(numPowerUpsOnBoard < MAX_XP_ONBOARD) {
+								board.isPowerUp[i][j] = true;
+								numPowerUpsOnBoard++;
 							}
 						}
 					}*/

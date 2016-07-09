@@ -10,16 +10,13 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-- self score (in green when positive, in red when losing, client side updates, server updates)
+- powerup system
+- eliminated, eliminated by messages 
 - client jitter when losing points
-- leaving map does not kill you client side
-
 
 - do something with purple crap? (think)
-
 - wasad to move
-
-
+- big red glow when negative
 - visual effect related to teleport (not sure what i'd like yet)
 - large screen doesn't load everything
 - phone support
@@ -30,3 +27,6 @@ This is private repo for the next big online io game.
 - +xp: slow down
 - +xp: cd increases
 - +xp larger AoE clear
+
+
+powers:

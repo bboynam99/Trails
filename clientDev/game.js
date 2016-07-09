@@ -23,7 +23,7 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('updateBoard', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
-				//board.isXp[i][j] = newBoard.isXp[i-newBoard.x0][j-newBoard.y0];
+				board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
 				/*if(player.lastPos && player.lastPos[0] == i && player.lastPos[1] == j) // never update last pos, client is always right
 					continue;*/
 				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
@@ -36,7 +36,7 @@ Game.prototype.handleNetwork = function(socket) {
 		colors = newBoard.colors;
 	});
 	
-	socket.on('updatePlayers', function (updatedPlayers, newLinks) {
+	socket.on('updatePlayers', function (updatedPlayers, newLinks, selfUpdate) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
 			if(otherPlayers)
@@ -56,16 +56,15 @@ Game.prototype.handleNetwork = function(socket) {
 		});
 		otherPlayers = updatedPlayers;
 		links = newLinks;
+		player.pts = selfUpdate.pts;
+		player.dpts = selfUpdate.dpts;
+		player.velocity = selfUpdate.velocity;
 	});
 	
 	socket.on('playerDied', function () {
 		gameOver = true;
 		lastFewBlocs = [];
 		lastFewBlocsId = 0;
-	});
-	
-	socket.on('newSpeed', function (v) {
-		player.velocity = v;
 	});
 	
 	socket.on('newHue', function (v) {
@@ -87,7 +86,7 @@ Game.prototype.handleLogic = function() {
 	if(isNewBloc) {
 		if(player.lastPos) { // this queue remembers last few values to reduce flicker from client-server disagreement
 			lastFewBlocs[lastFewBlocsId] = player.lastPos;
-			lastFewBlocsId = (lastFewBlocsId+1) % FEW_BLOCS_SIZE;
+			lastFewBlocsId = (lastFewBlocsId+1) % FEW_BLOCS_LENGTH;
 			// send event if next square is different!
 			if(player.lastPos[0] <= 1 || player.lastPos[1] <= 1 || player.lastPos[0] >= board.W-2 || player.lastPos[1] >= board.H-2){
 				updatePosition();
@@ -102,6 +101,8 @@ Game.prototype.handleLogic = function() {
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
+	// update points
+	player.myPts += player.mydPts * dt;
 }
 
 Game.prototype.handleGraphics = function(gfx) {
@@ -141,7 +142,7 @@ Game.prototype.handleGraphics = function(gfx) {
 	//draw cooldown marker
 	if(player.cooldown > 0) {
 		var bx = screenWidth * 0.5 - HALF_BLOC_SIZE_DISPLAY*.8,
-			by = screenHeight * 0.5 - HALF_BLOC_SIZE_DISPLAY*1.5;
+			by = screenHeight * 0.5 - HALF_BLOC_SIZE_DISPLAY*1.3;
 		var ex = screenWidth * 0.5 + HALF_BLOC_SIZE_DISPLAY*.8,
 			ey = by;
 		gfx.strokeStyle = '#000';
@@ -174,12 +175,12 @@ var board = {
 	H: 0,
 	W: 0,
 	isBloc: null,
-	isXp: null
+	isPowerUp: null
 };
 var colors = []; // contains all colors to be drawn, received from server.
 var links = [];
 var lastFewBlocs = []; //client will always trust itself for board state of these pts
-var lastFewBlocsId = 0; var FEW_BLOCS_SIZE = 5;
+var lastFewBlocsId = 0; var FEW_BLOCS_LENGTH = 5;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 
 function initBoard(H,W){
@@ -187,13 +188,13 @@ function initBoard(H,W){
 	board.W = W;
 	board.H = H;
 	board.isBloc = new Array(W);
-	board.isXp = new Array(W);
+	board.isPowerUp = new Array(W);
 	for (var i=0;i<W;i++) {
 		board.isBloc[i] = new Array(H);
-		board.isXp[i] = new Array(H);
+		board.isPowerUp[i] = new Array(H);
 		for (var j=0;j<H;j++) {
 			board.isBloc[i][j] = EMPTY_BLOC;
-			board.isXp[i][j] = false;
+			board.isPowerUp[i][j] = 0;
 		}
 	}
 }
@@ -205,20 +206,21 @@ var gameOver = false;
 var HALF_BLOC_SIZE_DISPLAY = 18; // the left and right padding in px when drawing a bloc
 var BLOC_TO_PIXELS = 36; // the size of a game bloc
 var BLOC_COLOR = '#777';
-var XP_RADIUS = 10;
-var XP_STROKE = 3;
-var XP_COLOR = '#9900ff';
-var XP_SCOLOR = '#000066';
 var LINK_COLOR = '#99ccff';
 var LINK_SCOLOR = '#00264d';
 var LINK_INNER = 7;
 var LINK_OUTER = 15;
 var LINK_JITTER = 5; // adds a jitter effect (in px)
+var POWERUP_RADIUS = 10;
+var POWERUP_STROKE = 3;
+var POWERUPSCOLOR = ['#660066','#ffcc00','#003399','#339933','#cc0000'];
+var POWERUPCOLOR = ['#9900ff','#ffff00','#0066ff','#00cc00','#ff5050'];
 //
 /** Game logic constants **/
 //
 var EMPTY_BLOC = -1;
 var SIDE_WALL = -2;
+
 
 //
 /** Game logic helpers **/
@@ -291,25 +293,49 @@ function movePlayer(p, dt) {
 //
 /** Display helpers **/
 //
-function drawPlayer(gfx, p){	
+function drawPlayer(gfx, p){
 	gfx.fillStyle = 'hsl(' + p.hue + ', 100%, 50%)';
 	gfx.strokeStyle =  'hsl(' + p.hue + ', 90%, 40%)';
 	gfx.lineWidth = 5;
 	gfx.lineJoin = 'round';
 	gfx.lineCap = 'round';
-	var coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOC_SIZE_DISPLAY);
+	var size = HALF_BLOC_SIZE_DISPLAY + getBonusSize(p.pts); // every multiple of 2, add a pixel!
+	var coords = getBlocDrawCoordinates(p.x,p.y,size);
 	gfx.fillRect(coords[0],coords[1],coords[2],coords[3]);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
 	
 	// draw name
 	gfx.fillStyle = 'hsl(' + p.hue + ', 100%, 90%)';
 	gfx.strokeStyle =  'hsl(' + p.hue + ', 90%, 40%)';
-	gfx.font = 'bold 50px Verdana';
+	gfx.font = 'bold 25px Verdana';
 	gfx.textAlign = 'center';
 	gfx.lineWidth = 2;
-	coords = boardToScreen(p.x,p.y-1);
-	gfx.fillText(p.name, coords[0], coords[1]);
-	gfx.strokeText(p.name, coords[0], coords[1]);
+	//var coordsName = boardToScreen(p.x,p.y-1);
+	var nx = coords[0] + coords[2]/2, ny = coords[1] - coords[3]*.35;
+	gfx.fillText(p.name, nx, ny);
+	gfx.strokeText(p.name, nx, ny);
+	
+	// draw score
+	if(p.dpts > 0)
+		gfx.fillStyle = '#060';
+	else
+		gfx.fillStyle = '#c00';
+	gfx.strokeStyle = '#fff';
+	gfx.font = 'bold 16px Verdana';
+	var t = Math.ceil(p.pts);
+	//nx = coords[0] + BLOC_TO_PIXELS*1.5, ny = coords[1] - BLOC_TO_PIXELS*.35;
+	nx = coords[0] + coords[2]*.75, ny = coords[1] + coords[3]*1.2;
+	gfx.strokeText(t,nx,ny);
+	gfx.fillText(t,nx,ny);
+}
+
+function getBonusSize(score){
+	if(score < 1000)
+		return Math.floor(score * 0.01);
+	else if(score < 20000)
+		return Math.floor(Math.floor(.4*Math.sqrt(score-375)));
+	else
+		return Math.floor(Math.floor(2.23434*Math.pow(score-4225.76,0.333)));
 }
 
 function drawBoard(gfx){
@@ -349,17 +375,17 @@ function drawBoard(gfx){
 		}
 	}
 	// draw xp
-	gfx.fillStyle = XP_COLOR;
-	gfx.strokeStyle = XP_SCOLOR;
-	gfx.lineWidth = XP_STROKE;
+	gfx.lineWidth = POWERUP_STROKE;
 	var PI2 = 2*Math.PI;
 	var sY=0, sX = Math.round(BLOC_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 );
 	for (var i=LosX0;i<=LosX1;i++) {
 		sY = Math.round(BLOC_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 );
 		for (var j=LosY0;j<=LosY1;j++) {
-			if (board.isXp[i][j]) {
+			if (board.isPowerUp[i][j] > 0) {
+				gfx.fillStyle = POWERUPCOLOR[board.isPowerUp[i][j]-1];
+				gfx.strokeStyle = POWERUPSCOLOR[board.isPowerUp[i][j]-1];
 				gfx.beginPath();
-				gfx.arc(sX,sY,XP_RADIUS,0,PI2);
+				gfx.arc(sX,sY,POWERUP_RADIUS,0,PI2);
 				gfx.fill();
 				gfx.stroke();
 			}
