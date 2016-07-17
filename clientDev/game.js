@@ -24,8 +24,6 @@ Game.prototype.handleNetwork = function(socket) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
 				board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
-				/*if(player.lastPos && player.lastPos[0] == i && player.lastPos[1] == j) // never update last pos, client is always right
-					continue;*/
 				board.isBloc[i][j] = newBoard.isBloc[i-newBoard.x0][j-newBoard.y0]; 
 			}
 		}
@@ -572,4 +570,4 @@ function updatePosition() {
 	if(player && !gameOver && socket)
 		socket.emit('mv', {x:player.x, y:player.y, dx:player.dx, dy:player.dy});
 }
-setInterval(updatePosition, 1000);
+setInterval(updatePosition, 500);

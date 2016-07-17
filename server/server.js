@@ -94,7 +94,8 @@ io.on('connection', function (socket) {
 		dy: spawnPosition[3],
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		cooldown: POWERUP_COOLDOWN,
-		pts: 0,
+		pts: 0, // this version of points is sync'd precisely
+		volatilepts: 0, // this version of points is rough, updated often and set to client
 		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
@@ -171,12 +172,12 @@ io.on('connection', function (socket) {
 			
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
 				killPlayer(player, 'player is outside the playable area.'); 
-			}else if(nx != x || ny != y) { // if position has changed 
+			} else if(nx != x || ny != y) { // if position has changed 
 				playerBoard[x][y] = null; // update player position LUT
 				playerBoard[nx][ny] = player;
 				player.lastX = nx;
 				player.lastY = ny;
-				traceLine(nx, ny, x, y, player.blocId, player);
+				replayLine(x, y, nx, ny, player.blocId, player);
 			}
 		}
 	});
@@ -253,24 +254,24 @@ function gameloop() {
 				// cooldown
 				u.cooldown = Math.max(0, u.cooldown - dt);
 				// score
-				if(colorsLUT[board.isBloc[Math.round(u.x + u.dx*.5)][Math.round(u.y + u.dy*.5)]] == u.hue) {
-					u.pts += dt * LOSING_POINTS_PER_SEC; // losing points!
-					u.dpts = LOSING_POINTS_PER_SEC;
-				} else {
-					u.pts += dt * DEFAULT_POINTS_PER_SEC;
-					u.dpts = DEFAULT_POINTS_PER_SEC;
+				var dist = Math.abs(u.x - Math.round(u.x)) + Math.abs(u.y - Math.round(u.y)); // distance to nearest square
+				if (dist < 0.1) { // you can only change score state when you hit a new bloc (e.g. round numbers)
+					var c = colorsLUT[board.isBloc[Math.round(u.x + u.dx * 0.5)][Math.round(u.y + u.dx * 0.5)]];
+					if(u.dpts > 0 && c == u.hue) {
+						// losing points!
+						u.dpts = LOSING_POINTS_PER_SEC;
+					} else if(u.dpts < 0 && c != u.hue) {
+						u.dpts = DEFAULT_POINTS_PER_SEC;
+					}
 				}
-				if(u.pts <= 0)
-					killPlayer(u,'ran out of points')
-				// velocity
-				u.velocity = INITIAL_VELOCITY / (0.000071 * u.pts + 1); // at 10k pts, speed = 7
+				u.volatilepts += dt * u.dpts;
 			}
 			}catch(e){} // sometimes the player is outside and this causes a crash... it's not important.
 	});	
 }
 
 var EMPTY_BLOC = -1;
-var SIDE_WALL = -2;
+var SIDE_WALL = -2; // client side constants
 var PLAYER_LOS_RANGE = 25;
 function sendUpdatesBoard() {
 	users.forEach( function(u) {
@@ -290,7 +291,7 @@ function sendUpdatesBoard() {
 				y0: losY0,
 				y1: losY1
 			};
-			if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // NOT SURE WHY THIS IS NEEDED...
+			if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // sometimes players are outside, but not dead yet (not sure why)
 				var colors = {};
 				newBoard.isBloc = new Array(losX1-losX0);
 				newBoard.isPowerUp = new Array(losX1-losX0);
@@ -301,10 +302,10 @@ function sendUpdatesBoard() {
 						// this is for board and colors
 						var id = board.isBloc[i+losX0][j+losY0];
 						newBoard.isBloc[i][j] = EMPTY_BLOC;
-						if(id > B_EMPTY && blocIdLUT[id]) {
-							var c = blocIdLUT[id].hue;
-							newBoard.isBloc[i][j] = c;
-							colors[c] = true;
+						var c = blocIdLUT[Math.abs(id)];
+						if(c) {
+							newBoard.isBloc[i][j] = c.hue;
+							colors[c.hue] = true;
 						} else if (id == B_BORDERS) {
 							newBoard.isBloc[i][j] = SIDE_WALL;
 						}
@@ -349,7 +350,7 @@ function sendUpdatesPlayers() {
 								velocity:o.velocity,
 								hue: o.hue,
 								name: o.name,
-								pts: o.pts,
+								pts: o.volatilepts,
 								dpts: o.dpts
 							});
 							l = links[otherPlayers];
@@ -365,7 +366,7 @@ function sendUpdatesPlayers() {
 			}
 			var selfPlayer = {
 				velocity:u.velocity,
-				pts: u.pts,
+				pts: u.volatilepts,
 				dpts: u.dpts
 			};
 							
@@ -399,44 +400,53 @@ function movePlayer(p, dt) {
 	p.x += p.dx * p.velocity * dt;
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
-	if (p.lastX != x || p.lastY != y)
-		if(Math.abs(p.lastX - x) + Math.abs(p.lastY - y) > 1) 
-			traceLine(x,y,p.lastX, p.lastY, p.blocId);// sometimes lag will cause client not to send packets, which will skip blocs. This interpolates to fill the void.
-		else
-			board.isBloc[p.lastX][p.lastY] = p.blocId;
-	// TODO: check if new position is reasonable. If sketchy, kill player (kick? time out?).
+	if (board.isBloc[x][y] == B_EMPTY) {
+		board.isBloc[x][y] = p.blocId * -1; // spawn "phantom" trail
+		afterInterpolationMove(x,y,p);
+	}
 }
-function traceLine(x0, y0, x1, y1, v, p) { //also checks for collision (and possibly kills p)
+
+function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and possibly kills p)
 	try {
 		var dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
-		if(dx != 0 && dy != 0) return; // some weird lag happened. avoid infinite loop.
+		if(!(dx == 0 ^ dy == 0)) return; // some weird lag happened? avoid infinite loop.
 		
 		while((x0!=x1) || (y0!=y1)) {
-			if(board.isBloc[x0][y0] == B_EMPTY)
+			beforeConfirmedMove(x0,y0,p);
+			if(board.isBloc[x0][y0] == B_EMPTY || board.isBloc[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
 				board.isBloc[x0][y0] = v;
-			else if(p && colorsLUT[board.isBloc[x0][y0]] != p.hue && board.isBloc[x0][y0] > B_KILLSYOUTHRESHOLD) {
-				hasCrashedInto(blocIdLUT[board.isBloc[x0][y0]], p)
+			} else if(p && colorsLUT[board.isBloc[x0][y0]] != p.hue && board.isBloc[x0][y0] > B_KILSYOUTHRESHOLD) { // kill if needed
+				hasCrashedInto(blocIdLUT[board.isBloc[x0][y0]], p);
 				killPlayer(p,'the player stepped on another line of value ' + board.isBloc[x0][y0]);
 				break;
 			}
 			x0 += dx;
 			y0 += dy;
 		}
-		//console.log('NEW DRAW - from ' + x0 + ',' + y0 + ' to ' + x1 + ',' + y1);
-		/*var dx = Math.abs(x1-x0); var dy = Math.abs(y1-y0);
-		var sx = (x0 < x1) ? 1 : -1; var sy = (y0 < y1) ? 1 : -1;
-		var err = dx-dy;
-		while(!((x0==x1) && (y0==y1))){
-			if (e2 >-dy){ err -= dy; x0 += sx; }
-			if (e2 < dx){ err += dx; y0 += sy; }
-			//console.log('filling ' + x0 + ',' + y0);
-
-			var e2 = 2*err;
-		}*/
 	} catch(err) {
 		console.log('fail to draw line at ' + x0 + ',' + y0 + '.');
 	}
 }
+
+function afterInterpolationMove(x,y,p) {
+	//console.log('added phantom with value ' + board.isBloc[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
+}
+
+function beforeConfirmedMove(x,y,p) {
+	// update points
+	
+	if(colorsLUT[board.isBloc[x][y]] == p.hue){
+		p.pts += LOSING_POINTS_PER_SEC / p.velocity;
+	} else {
+		p.pts += DEFAULT_POINTS_PER_SEC / p.velocity;
+	}
+	p.volatilepts = p.pts; //resync pts
+	if(p.pts <= 0)
+		killPlayer(p,'ran out of points')
+	// update velocity based on points
+	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1); // at 10k pts, speed = 7
+}
+
 
 // returns a position and direction [x y dx dy] to spawn
 function findGoodSpawn() {
@@ -543,6 +553,7 @@ function getRandomInt(min, max) {
 }
 function hasCrashedInto(crashee, crasher) {
 	crashee.pts += crasher.pts;
+	crashee.volatilepts = crashee.pts; //resync pts
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
 			if(board.isBloc[i][j] == crashee.blocId) {
@@ -560,6 +571,8 @@ function killPlayer(p, reason) {
 		xpDropCounter = 0;
 		p.isDead = true;
 		p.pts = 0;
+		p.volatilepts = 0;
+		p.cooldown = POWERUP_COOLDOWN;
 		sockets[p.id].emit('playerDied');
 		playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 		p.desyncCounter = 0;
@@ -567,16 +580,6 @@ function killPlayer(p, reason) {
 			for (var j=1;j<board.H-1;j++) {
 				if(board.isBloc[i][j] == p.blocId) {
 					board.isBloc[i][j] = B_EMPTY;
-					/*if(isDropXp){
-						xpDropCounter++;
-						if(xpDropCounter == FREQ_XP_DROP_ONDEATH) {
-							xpDropCounter = 0;
-							if(numPowerUpsOnBoard < MAX_XP_ONBOARD) {
-								board.isPowerUp[i][j] = true;
-								numPowerUpsOnBoard++;
-							}
-						}
-					}*/
 				}
 			}
 		}
@@ -640,13 +643,6 @@ function getUnusedColor() {
 	
 }
 
-/*function toBoardRange(x,y) {
-	return [Math.round(Math.min(Math.max(x,0))]
-	LosX0 = ;
-	LosX1 = Math.round(Math.min(player.x + LosW, board.W-1));
-	LosY0 = Math.round(Math.max(player.y - LosH,0));
-	LosY1 = Math.round(Math.min(player.y + LosH, board.H-1));
-}*/
 
 /** Launch game **/
 setInterval(gameloop, 1000/15);
