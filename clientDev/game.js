@@ -11,11 +11,11 @@ Game.prototype.handleNetwork = function(socket) {
 	bindKeyboard(c);
 	bindClickTap(c);
 	// This is where all socket messages are received
-	socket.on('playerSpawn', function (newPlayer, board) {
+	socket.on('playerSpawn', function (newPlayer, board, cts) {
 		initBoard(board.boardW,board.boardH);
 		player = newPlayer;
 		player['name'] = playerName; // in case myNameIs hasn't registered yet
-
+		LOSING_POINTS_RATIO = cts.lpr;
 		gameOver = false;
 		tick();
 	});
@@ -37,6 +37,7 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('updatePlayers', function (updatedPlayers, newLinks, selfUpdate) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
+			p.lastDeltaPts = p.dpts; // this will be used later
 			if(otherPlayers)
 				for ( var i=0; i < otherPlayers.length; i++ ) {
 					var o = otherPlayers[i];
@@ -47,6 +48,10 @@ Game.prototype.handleNetwork = function(socket) {
 								p.x = otherPlayers[i].x;
 								p.y = otherPlayers[i].y;
 							}
+							if(Math.abs(p.pts - o.pts) < p.dpts) {
+								// keep the score values if the delta is small (to avoid jitter)
+								p.pts = o.pts;
+							}
 						}
 						break;
 					}
@@ -54,8 +59,11 @@ Game.prototype.handleNetwork = function(socket) {
 		});
 		otherPlayers = updatedPlayers;
 		links = newLinks;
-		player.pts = selfUpdate.pts;
+		if(Math.abs(player.pts - selfUpdate.pts) > selfUpdate.dpts) {
+			player.pts = selfUpdate.pts; // avoid jitter
+		}
 		player.dpts = selfUpdate.dpts;
+		player.lastDeltaPts = selfUpdate.dpts; //cached dpts
 		player.velocity = selfUpdate.velocity;
 	});
 	
@@ -99,8 +107,6 @@ Game.prototype.handleLogic = function() {
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
-	// update points
-	player.myPts += player.mydPts * dt;
 }
 
 Game.prototype.handleGraphics = function(gfx) {
@@ -218,7 +224,7 @@ var POWERUPCOLOR = ['#9900ff','#ffff00','#0066ff','#00cc00','#ff5050'];
 //
 var EMPTY_BLOC = -1;
 var SIDE_WALL = -2;
-
+var LOSING_POINTS_RATIO;
 
 //
 /** Game logic helpers **/
@@ -284,7 +290,18 @@ function movePlayer(p, dt) {
 		value = true;
 	}
 	p.lastPos = [squareX, squareY];
-	
+		
+	// update points
+	var x = Math.round(p.x + p.dx*.5), y = Math.round(p.y + p.dy*.5);
+	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
+		if(board.isBloc[x][y] == p.hue){
+			player.lastDeltaPts = (player.dpts*LOSING_POINTS_RATIO);
+			//console.log('red');
+		}else
+			player.lastDeltaPts = player.dpts;
+		player.pts += player.lastDeltaPts * dt;
+		//console.log('points changed to: ' + Math.round(player.pts));
+	}
 	return value;
 }
 
@@ -297,7 +314,7 @@ function drawPlayer(gfx, p){
 	gfx.lineWidth = 5;
 	gfx.lineJoin = 'round';
 	gfx.lineCap = 'round';
-	var size = HALF_BLOC_SIZE_DISPLAY + getBonusSize(p.pts); // every multiple of 2, add a pixel!
+	var size = HALF_BLOC_SIZE_DISPLAY * getBonusSize(p.pts);
 	var coords = getBlocDrawCoordinates(p.x,p.y,size);
 	gfx.fillRect(coords[0],coords[1],coords[2],coords[3]);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
@@ -314,10 +331,11 @@ function drawPlayer(gfx, p){
 	gfx.strokeText(p.name, nx, ny);
 	
 	// draw score
-	if(p.dpts > 0)
+	if(p.lastDeltaPts > 0) {
 		gfx.fillStyle = '#060';
-	else
+	} else if(p.lastDeltaPts < 0) {
 		gfx.fillStyle = '#c00';
+	}
 	gfx.strokeStyle = '#fff';
 	gfx.font = 'bold 16px Verdana';
 	var t = Math.ceil(p.pts);
@@ -328,12 +346,13 @@ function drawPlayer(gfx, p){
 }
 
 function getBonusSize(score){
-	if(score < 1000)
+	/*if(score < 1000)
 		return Math.floor(score * 0.01);
 	else if(score < 20000)
 		return Math.floor(Math.floor(.4*Math.sqrt(score-375)));
 	else
-		return Math.floor(Math.floor(2.23434*Math.pow(score-4225.76,0.333)));
+		return Math.floor(Math.floor(2.23434*Math.pow(score-4225.76,0.333)));*/
+	 return 968.8675 + (1.00653 - 968.8675)/(1 + Math.pow(score/57386000000,0.3469172));
 }
 
 function drawBoard(gfx){

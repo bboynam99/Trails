@@ -8,10 +8,10 @@ app.use(express.static(__dirname + '/../client'));
 //
 /** Game Constants **/
 //
-var SPAWN_SPACE_NEEDED = 5;
+var SPAWN_SPACE_NEEDED = 10;
 var INITIAL_VELOCITY = 12.0;
 var DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
-var LOSING_POINTS_PER_SEC = -150; // The number of points loss per second while on self-track
+var LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
 var NUM_POWERUPS_ONBOARD = 3;
 var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 3; // link will end after this
@@ -94,9 +94,8 @@ io.on('connection', function (socket) {
 		dy: spawnPosition[3],
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		cooldown: POWERUP_COOLDOWN,
-		pts: 0, // this version of points is sync'd precisely
-		volatilepts: 0, // this version of points is rough, updated often and set to client
-		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt
+		pts: 900, // this version of points is sync'd precisely
+		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt when you're positive
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
 		name: '',
@@ -128,7 +127,7 @@ io.on('connection', function (socket) {
 		player.hue = getUnusedColor(); // player is no longer part of any other hue groups!
 		colorsLUT[player.blocId] = player.hue;
 		player.isDead = false;
-		socket.emit('playerSpawn',{
+		socket.emit('playerSpawn',{ // the player
 			x: player.x,
 			y: player.y,
 			dx:player.dx,
@@ -136,11 +135,15 @@ io.on('connection', function (socket) {
 			velocity:player.velocity,
 			hue: player.hue,
 			cooldown: player.cooldown,
+			pts: player.pts,
+			dpts: player.dpts,
 			maxCooldown: POWERUP_COOLDOWN,
 			teleportDist: TELEPORT_DISTANCE
-		}, {
+		}, { // the board
 			boardW:board.W,
 			boardH:board.H
+		}, { // some important game values
+			lpr: LOSING_POINTS_RATIO
 		});
 	}
 	emitRespawn();
@@ -162,14 +165,7 @@ io.on('connection', function (socket) {
 			player.lastHeartbeat = new Date().getTime(); // see function checkHeartBeat
 			player.x = newInfo.x;
 			player.y = newInfo.y;
-			
-			if(board.isPowerUp[nx][ny]) {
-				board.isPowerUp[nx][ny] = PU_NONE;
-				numPowerUpsOnBoard--;
-				//TODO: give power up to player
-				//sockets[player.id].emit('newSpeed', player.velocity);
-			}
-			
+						
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
 				killPlayer(player, 'player is outside the playable area.'); 
 			} else if(nx != x || ny != y) { // if position has changed 
@@ -255,16 +251,6 @@ function gameloop() {
 				u.cooldown = Math.max(0, u.cooldown - dt);
 				// score
 				var dist = Math.abs(u.x - Math.round(u.x)) + Math.abs(u.y - Math.round(u.y)); // distance to nearest square
-				if (dist < 0.1) { // you can only change score state when you hit a new bloc (e.g. round numbers)
-					var c = colorsLUT[board.isBloc[Math.round(u.x + u.dx * 0.5)][Math.round(u.y + u.dx * 0.5)]];
-					if(u.dpts > 0 && c == u.hue) {
-						// losing points!
-						u.dpts = LOSING_POINTS_PER_SEC;
-					} else if(u.dpts < 0 && c != u.hue) {
-						u.dpts = DEFAULT_POINTS_PER_SEC;
-					}
-				}
-				u.volatilepts += dt * u.dpts;
 			}
 			}catch(e){} // sometimes the player is outside and this causes a crash... it's not important.
 	});	
@@ -350,7 +336,7 @@ function sendUpdatesPlayers() {
 								velocity:o.velocity,
 								hue: o.hue,
 								name: o.name,
-								pts: o.volatilepts,
+								pts: o.pts,
 								dpts: o.dpts
 							});
 							l = links[otherPlayers];
@@ -366,7 +352,7 @@ function sendUpdatesPlayers() {
 			}
 			var selfPlayer = {
 				velocity:u.velocity,
-				pts: u.volatilepts,
+				pts: u.pts,
 				dpts: u.dpts
 			};
 							
@@ -400,9 +386,11 @@ function movePlayer(p, dt) {
 	p.x += p.dx * p.velocity * dt;
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
-	if (board.isBloc[x][y] == B_EMPTY) {
-		board.isBloc[x][y] = p.blocId * -1; // spawn "phantom" trail
-		afterInterpolationMove(x,y,p);
+	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
+		if (board.isBloc[x][y] == B_EMPTY) {
+			board.isBloc[x][y] = p.blocId * -1; // spawn "phantom" trail
+			afterInterpolationMove(x,y,p);
+		}
 	}
 }
 
@@ -429,24 +417,49 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 }
 
 function afterInterpolationMove(x,y,p) {
+	// check for powerups pickup
+	if(board.isPowerUp[x][y]) {
+		board.isPowerUp[x][y] = PU_NONE;
+		numPowerUpsOnBoard--;
+		//TODO: give power up to player
+		//sockets[p.id].emit('newPowerUp', ...);
+	}
 	//console.log('added phantom with value ' + board.isBloc[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
+	dilation(x,y,p,p.blocId * -1);
 }
 
 function beforeConfirmedMove(x,y,p) {
 	// update points
-	
 	if(colorsLUT[board.isBloc[x][y]] == p.hue){
-		p.pts += LOSING_POINTS_PER_SEC / p.velocity;
+		p.pts += (DEFAULT_POINTS_PER_SEC*LOSING_POINTS_RATIO) / p.velocity;
 	} else {
 		p.pts += DEFAULT_POINTS_PER_SEC / p.velocity;
 	}
-	p.volatilepts = p.pts; //resync pts
 	if(p.pts <= 0)
 		killPlayer(p,'ran out of points')
 	// update velocity based on points
 	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1); // at 10k pts, speed = 7
+	
+	dilation(x,y,p,p.blocId);
 }
 
+function dilation(x,y,p,v) {
+	// make the line fatter
+	var s = Math.floor(getBonusSize(p.pts));
+	s = s - (s % 2);
+	if (s > 1) {
+		var px = Math.round(x-p.dx*2), py = Math.round(y-p.dy*2);
+		s = Math.round((s - 1)/2);
+		for(i=-s;i<=s;i++)
+			for(j=-s;j<=s;j++)
+				if(x+i != Math.round(p.x) && y+j != Math.round(p.y))
+					board.isBloc[x+i][y+j] = v;	
+	}
+}
+
+function getBonusSize(score) {
+	 return 968.8675 + (1.00653 - 968.8675)/(1 + Math.pow(score/57386000000,0.3469172));
+}
 
 // returns a position and direction [x y dx dy] to spawn
 function findGoodSpawn() {
@@ -503,7 +516,7 @@ function updateLeaderboard() {
 }
 
 function updateLinks(dt) {
-	for (var key in links) {
+/*	for (var key in links) {
 		var l = links[key];
 		var A = l.fromP, B = l.toP;
 		var dist = (Math.abs(A.x - B.x) + Math.abs(A.y - B.y));
@@ -518,10 +531,10 @@ function updateLinks(dt) {
 				sockets[B.id].emit('newHue', B.hue);
 			}
 		}
-	};
+	};*/
 }
 function checkForLink(playerA, playerB) {
-	if(links) {
+/*	if(links) {
 		if(colorsLUT[playerA.blocId] != colorsLUT[playerB.blocId]) {
 			if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) {
 				if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) {
@@ -545,7 +558,7 @@ function checkForLink(playerA, playerB) {
 				}
 			}
 		}
-	}
+	}*/
 }
 
 function getRandomInt(min, max) {
@@ -553,10 +566,9 @@ function getRandomInt(min, max) {
 }
 function hasCrashedInto(crashee, crasher) {
 	crashee.pts += crasher.pts;
-	crashee.volatilepts = crashee.pts; //resync pts
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
-			if(board.isBloc[i][j] == crashee.blocId) {
+			if(Math.abs(board.isBloc[i][j]) == crashee.blocId) {
 				board.isBloc[i][j] = B_EMPTY;
 			}
 		}
@@ -571,14 +583,13 @@ function killPlayer(p, reason) {
 		xpDropCounter = 0;
 		p.isDead = true;
 		p.pts = 0;
-		p.volatilepts = 0;
 		p.cooldown = POWERUP_COOLDOWN;
 		sockets[p.id].emit('playerDied');
 		playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 		p.desyncCounter = 0;
 		for (var i=1;i<board.W-1;i++) {
 			for (var j=1;j<board.H-1;j++) {
-				if(board.isBloc[i][j] == p.blocId) {
+				if(Math.abs(board.isBloc[i][j]) == p.blocId) {
 					board.isBloc[i][j] = B_EMPTY;
 				}
 			}

@@ -10,12 +10,15 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-- points refresh very slowly: scrap volatile system and compute it client side.
-- powerups should be picked up when going over them
-- If you're fat enough, you're trail gets bigger (3x3, 5x5, 7x7).
+- If you're fat enough, you're trail gets bigger (3x3, 5x5, 7x7). 1k = 3x3, 10k = 5x5
+	- large lines shouldn't damage you (find solution)
+	- fix scaling (mini exponential curves)
+	- fix spawning even number spawning
+	- fix collision (based on size)
+	- powerups should be picked up when going over them (based on size)
 
-- on turn, wipe out all phantoms in a 3x3 neiborhood
 - powerup system
+- on turn, wipe out all phantoms in a 3x3 neiborhood
 - large players are a bit too slow
 - +xp much more powerful powerups
 
