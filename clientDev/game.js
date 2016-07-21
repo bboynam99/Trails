@@ -314,7 +314,7 @@ function drawPlayer(gfx, p){
 	gfx.lineWidth = 5;
 	gfx.lineJoin = 'round';
 	gfx.lineCap = 'round';
-	var size = HALF_BLOC_SIZE_DISPLAY * getBonusSize(p.pts);
+	var size = HALF_BLOC_SIZE_DISPLAY * (1+2*getBonusSize(p.pts));
 	var coords = getBlocDrawCoordinates(p.x,p.y,size);
 	gfx.fillRect(coords[0],coords[1],coords[2],coords[3]);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
@@ -346,13 +346,11 @@ function drawPlayer(gfx, p){
 }
 
 function getBonusSize(score){
-	/*if(score < 1000)
-		return Math.floor(score * 0.01);
-	else if(score < 20000)
-		return Math.floor(Math.floor(.4*Math.sqrt(score-375)));
-	else
-		return Math.floor(Math.floor(2.23434*Math.pow(score-4225.76,0.333)));*/
-	 return 968.8675 + (1.00653 - 968.8675)/(1 + Math.pow(score/57386000000,0.3469172));
+	 var x = Math.pow(score/1000,0.333333);
+	 var xa = Math.floor(x);
+	 
+	 var dx = (x-xa);
+	 return xa + Math.pow(dx,4);
 }
 
 function drawBoard(gfx){

@@ -94,7 +94,7 @@ io.on('connection', function (socket) {
 		dy: spawnPosition[3],
 		velocity: INITIAL_VELOCITY, // in blocs per second
 		cooldown: POWERUP_COOLDOWN,
-		pts: 900, // this version of points is sync'd precisely
+		pts: 1, // this version of points is sync'd precisely
 		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt when you're positive
 		hue: getUnusedColor(),
 		lastHeartbeat: new Date().getTime(),
@@ -446,10 +446,8 @@ function beforeConfirmedMove(x,y,p) {
 function dilation(x,y,p,v) {
 	// make the line fatter
 	var s = Math.floor(getBonusSize(p.pts));
-	s = s - (s % 2);
-	if (s > 1) {
+	if (s > 0) {
 		var px = Math.round(x-p.dx*2), py = Math.round(y-p.dy*2);
-		s = Math.round((s - 1)/2);
 		for(i=-s;i<=s;i++)
 			for(j=-s;j<=s;j++)
 				if(x+i != Math.round(p.x) && y+j != Math.round(p.y))
@@ -458,7 +456,8 @@ function dilation(x,y,p,v) {
 }
 
 function getBonusSize(score) {
-	 return 968.8675 + (1.00653 - 968.8675)/(1 + Math.pow(score/57386000000,0.3469172));
+	return Math.pow(score/1000,0.333333);
+	 //return 968.8675 + (1.00653 - 968.8675)/(1 + Math.pow(score/57386000000,0.3469172));
 }
 
 // returns a position and direction [x y dx dy] to spawn
