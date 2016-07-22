@@ -10,16 +10,14 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-- If you're fat enough, you're trail gets bigger (3x3, 5x5, 7x7). 1k = 3x3, 10k = 5x5
-	- large lines shouldn't damage you (find solution) : remove interpolated blocs, and replace with timestamps
-	- fix collision (based on size)
-	- powerups should be picked up when going over them (based on size)
+Q: how should collision work when you grow?
 
 - powerup system
-- on turn, wipe out all phantoms in a 3x3 neiborhood
-- large players are a bit too slow
+- on turn, wipe out all phantoms in a 3x3 neiborhood (maybe not necessary)
+- large players are a bit too slow (not sure about that either)
 - +xp much more powerful powerups
 
+- test with high lag
 - large LOS gray areas to indicate you're too far to see over there
 - eliminated, eliminated by messages 
 - client jitter when losing points
@@ -28,3 +26,4 @@ This is private repo for the next big online io game.
 - large screen doesn't load everything
 - phone support
 - onscreen explanation of powerups (maybe tips on deaths?)
+- player limit
