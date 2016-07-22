@@ -362,7 +362,7 @@ function sendUpdatesPlayers() {
 								name: o.name,
 								pts: o.pts,
 								dpts: o.dpts,
-								slots: player.slots
+								slots: o.slots
 							});
 							l = links[otherPlayers];
 							if(l && l.dt >= LINK_START) {
@@ -413,11 +413,11 @@ function movePlayer(p, dt) {
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
-		if (board.blockId[x][y] != B_BORDERS) {
+		if (board.blockId[x][y] == B_EMPTY) {
 			board.blockId[x][y] = p.blocId * -1; // spawn "phantom" trail
 			board.BlockTs[x][y] = lastUpdate;
-			afterInterpolationMove(x,y,p);
 		}
+		afterInterpolationMove(x,y,p);
 	}
 }
 
@@ -431,7 +431,7 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
 				board.blockId[x0][y0] = v;
 				board.BlockTs[x0][y0] = lastUpdate;
-			} else if(p && colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILSYOUTHRESHOLD && lastUpdate - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
+			} else if(p && colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && lastUpdate - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
 				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
 				killPlayer(p,'the player stepped on another line of value ' + board.blockId[x0][y0]);
 				break;
@@ -460,12 +460,12 @@ function afterInterpolationMove(x,y,p) {
 		
 
 	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
-	dilation(x,y,p,p.blocId * -1);
+	//dilation(x,y,p,p.blocId * -1);
 }
 
 function beforeConfirmedMove(x,y,p) {
 	// update points
-	console.log('adding pts, colorChk=' + (colorsLUT[board.blockId[x][y]] == p.hue) + ' and delta time=' + (lastUpdate - board.BlockTs[x][y]) +'ms');
+	//console.log('adding pts, colorChk=' + (colorsLUT[board.blockId[x][y]] == p.hue) + ' and delta time=' + (lastUpdate - board.BlockTs[x][y]) +'ms');
 	if(colorsLUT[Math.abs(board.blockId[x][y])] == p.hue && lastUpdate - board.BlockTs[x][y] >= WALL_SOLIDIFICATION){
 		p.pts += (p.dpts*p.lpr) / p.velocity;
 		//console.log('--');
@@ -489,7 +489,7 @@ function dilation(x,y,p,v) {
 		for(i=-s;i<=s;i++)
 			for(j=-s;j<=s;j++) {
 				initVal = board.blockId[x+i][y+j]
-				if (initVal != B_BORDERS && initVal != v) {
+				if (initVal <= B_EMPTY && initVal != v) {
 					board.blockId[x+i][y+j] = v;
 					board.BlockTs[x+i][y+j] = lastUpdate;
 				}
