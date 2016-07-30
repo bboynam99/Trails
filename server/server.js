@@ -13,7 +13,7 @@ var INITIAL_VELOCITY = 12.0;
 var DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 var DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
 var NUM_POWERUPS_ONBOARD = 10;
-var WALL_SOLIDIFICATION = 800; // the grace period in ms before a wall solidifies and can harm players
+var WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
 var LINK_START = 0.25; // link will show after this (ms)
 var LINK_END = 3; // link will end after this
 var LINK_RANGE = 5; // link will start at this distance
@@ -43,7 +43,7 @@ var PU_SPEED_MOD = 1.25; // bloc per second per PU
 var PU_TELE_CD = 2.25; // bonus sec cd per PU
 var PU_TELE_AOE = 3; // bonus radius per PU
 var PU_PTS_LOSS_MOD = -2.4; // The point loss modifier when stepping on own track
-var PU_POINTS_MOD = 7.5; // bonus points per sec per PU
+var PU_POINTS_MOD = 10; // bonus points per sec per PU
 var PU_TELE_RANGE = 4; // bonus teleport distance
 
 
@@ -53,8 +53,8 @@ var PU_TELE_RANGE = 4; // bonus teleport distance
 //
 var users = []; // players and their data
 var board = { // game board
-	H: 100,
-	W: 100,
+	H: 50,
+	W: 50,
 	blockId: null,
 	isPowerUp: null,
 	BlockTs: null
@@ -113,7 +113,7 @@ io.on('connection', function (socket) {
 		cooldown: TELE_COOLDOWN,
 		maxCooldown: TELE_COOLDOWN,
 		teleportDist: TELE_DISTANCE,
-		pts: 1, // this version of points is sync'd precisely
+		pts: 1, // player points
 		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt when you're positive
 		lpr: DEFAULT_LOSING_POINTS_RATIO, // dpts/dt ratio factor when you're negative (stepping on own track)
 		bonusSizeCache: 0, //use to cache the bonus size (so it is not recomputed constantly)
@@ -139,7 +139,7 @@ io.on('connection', function (socket) {
 
 	socket.on('myNameIs', function (name) {
 		if(!name || !validNick(name)){
-			killPlayer(player, 'invalid name'); 
+			killPlayer(player, 'invalid name', 'Your name was invalid.'); 
 			socket.disconnect();
 		}
 			
@@ -166,7 +166,8 @@ io.on('connection', function (socket) {
 			teleportDist: TELE_DISTANCE
 		}, { // the board
 			boardW:board.W,
-			boardH:board.H
+			boardH:board.H,
+			LOS:PLAYER_LOS_RANGE
 		});
 	}
 	emitRespawn();
@@ -190,19 +191,20 @@ io.on('connection', function (socket) {
 			player.y = newInfo.y;
 						
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
-				killPlayer(player, 'player is outside the playable area.'); 
+				killPlayer(player, 'player is outside the playable area.','You crashed into a border.'); 
 			} else if(nx != x || ny != y) { // if position has changed 
 				playerBoard[x][y] = null; // update player position LUT
 				playerBoard[nx][ny] = player;
 				player.lastX = nx;
 				player.lastY = ny;
 				replayLine(x, y, nx, ny, player.blocId, player);
+				//dilation(nx,ny,player,player.blocId); // this avoids a drawing glitch when turning quickly
 			}
 		}
 	});
 
 	socket.on('disconnect', function () {
-		killPlayer(player, 'disconnected, killing his avatar');
+		killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
 		delete sockets[player.id];
 		delete colorsLUT[player.blocId];
 		var index = users.indexOf(player);
@@ -227,10 +229,10 @@ io.on('connection', function (socket) {
     });
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 1)
-			killPlayer(player, 'used a powerup while still on CD');
+			killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) > 4){ // a small lag grace
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) + ', which is greater than ' + 4);
-			killPlayer(player, 'teleported way too far.');
+			killPlayer(player, 'teleported way too far.', 'You were out of sync with the server :(');
 		} else {
 			player.x = x;
 			player.y = y;
@@ -423,6 +425,7 @@ function movePlayer(p, dt) {
 
 function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and possibly kills p)
 	try {
+		var now = Date.now();
 		var dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
 		if(!(dx == 0 ^ dy == 0)) return; // some weird lag happened? avoid infinite loop.
 		
@@ -430,10 +433,10 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 			beforeConfirmedMove(x0,y0,p);
 			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
 				board.blockId[x0][y0] = v;
-				board.BlockTs[x0][y0] = lastUpdate;
-			} else if(p && colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && lastUpdate - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
+				board.BlockTs[x0][y0] = now;
+				dilation(x0,y0,p,p.blocId);
+			} else if(p && colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
 				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
-				killPlayer(p,'the player stepped on another line of value ' + board.blockId[x0][y0]);
 				break;
 			}
 			x0 += dx;
@@ -447,12 +450,17 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 function afterInterpolationMove(x,y,p) {
 	// check for powerups pickup
 	var s = Math.floor(p.bonusSizeCache);
+	
+	var x0 = Math.max(x - s,0);
+	var x1 = Math.min(x + s, board.W-1);
+	var y0 = Math.max(y - s,0);
+	var y1 = Math.min(y + s, board.H-1);
 	//try {
-		for(i=-s;i<=s;i++)
-			for(j=-s;j<=s;j++)
-				if(board.isPowerUp[x+i][y+j]) {
-					var id = board.isPowerUp[x+i][y+j];
-					board.isPowerUp[x+i][y+j] = PU_ID_NONE;
+		for(i=x0;i<=x1;i++)
+			for(j=y0;j<=y1;j++)
+				if(board.isPowerUp[i][j]) {
+					var id = board.isPowerUp[i][j];
+					board.isPowerUp[i][j] = PU_ID_NONE;
 					numPowerUpsOnBoard--;
 					pickupPowerUp(p, id);
 				}					
@@ -460,13 +468,14 @@ function afterInterpolationMove(x,y,p) {
 		
 
 	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
-	//dilation(x,y,p,p.blocId * -1);
+	dilation(x,y,p,p.blocId * -1);
 }
 
 function beforeConfirmedMove(x,y,p) {
 	// update points
-	//console.log('adding pts, colorChk=' + (colorsLUT[board.blockId[x][y]] == p.hue) + ' and delta time=' + (lastUpdate - board.BlockTs[x][y]) +'ms');
-	if(colorsLUT[Math.abs(board.blockId[x][y])] == p.hue && lastUpdate - board.BlockTs[x][y] >= WALL_SOLIDIFICATION){
+	
+	if(board.blockId[x][y]*-1 != p.id && colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 900/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
+		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.BlockTs[x][y]) +'ms');
 		p.pts += (p.dpts*p.lpr) / p.velocity;
 		//console.log('--');
 	} else {
@@ -474,10 +483,9 @@ function beforeConfirmedMove(x,y,p) {
 		//console.log('++');
 	}
 	if(p.pts <= 0)
-		killPlayer(p,'ran out of points');
+		killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
 	// update velocity based on points
 	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + p.slotAggregation[PU_ID_SPEED-1] * PU_SPEED_MOD; // at 10k pts, speed = 7
-	dilation(x,y,p,p.blocId);
 }
 
 function dilation(x,y,p,v) {
@@ -485,13 +493,16 @@ function dilation(x,y,p,v) {
 	var s = Math.floor(p.bonusSizeCache);
 	var initVal = 0;
 	if (s > 0) {
-		var px = Math.round(x), py = Math.round(y);
-		for(i=-s;i<=s;i++)
-			for(j=-s;j<=s;j++) {
-				initVal = board.blockId[x+i][y+j]
+		var x0 = Math.max(x - s,0);
+		var x1 = Math.min(x + s, board.W - 1);
+		var y0 = Math.max(y - s,0);
+		var y1 = Math.min(y + s, board.H - 1);
+		for(i=x0;i<=x1;i++)
+			for(j=y0;j<=y1;j++) {
+				initVal = board.blockId[i][j]
 				if (initVal <= B_EMPTY && initVal != v) {
-					board.blockId[x+i][y+j] = v;
-					board.BlockTs[x+i][y+j] = lastUpdate;
+					board.blockId[i][j] = v;
+					board.BlockTs[i][j] = board.BlockTs[x][y];
 				}
 			}
 	}
@@ -555,10 +566,10 @@ function updateLeaderboard() {
 	});
 }
 
-function cleanPhantomTrails(){
+function cleanPhantomTrails() {
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
-			if(board.blockId[i][j] < B_BORDERS * -1 && lastUpdate - board.BlockTs[i][j] >= WALL_SOLIDIFICATION) {
+			if(board.blockId[i][j] < B_BORDERS * -1 && lastUpdate - board.BlockTs[i][j] >= 1000) { //phantom trails should last this long
 				board.blockId[i][j] = B_EMPTY;
 			}
 		}
@@ -611,6 +622,7 @@ function checkForLink(playerA, playerB) {
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
 function hasCrashedInto(crashee, crasher) {
 	crashee.pts += crasher.pts;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
@@ -620,11 +632,10 @@ function hasCrashedInto(crashee, crasher) {
 			}
 		}
 	}
-	
-	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name);
+	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name, 'You were eliminated by ' + crashee.name + '.');
 }
 
-function killPlayer(p, reason) {
+function killPlayer(p, reason, message) {
 	try {
 		console.log('Killing player ' + p.name + ' because: "' + reason)
 		xpDropCounter = 0;
@@ -639,8 +650,9 @@ function killPlayer(p, reason) {
 			p.slotAggregation[i]=0;
 		p.lastSlotFilled = 0;
 		
-		sockets[p.id].emit('playerDied');
-		playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
+		sockets[p.id].emit('playerDied', message);
+		if(Math.round(p.x) >= 0 && Math.round(p.y) >= 0 && Math.round(p.x) < board.W && Math.round(p.y) < board.H)
+			playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
 		p.desyncCounter = 0;
 		for (var i=1;i<board.W-1;i++) {
 			for (var j=1;j<board.H-1;j++) {
@@ -671,14 +683,15 @@ function teleportPlayer(player) {
 	player.cooldown = player.maxCooldown;
 }
 
+var now;
 function checkHeartBeat() {
-	var now = Date.now();
+	now = Date.now();
     var dt = now - lastUpdate;
 	
 		users.forEach( function(u) {
 			if(!u.isDead)
 				if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
-					killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK);
+					killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK, 'You lagged out :(');
 		});
 }
 
@@ -713,7 +726,7 @@ function checkSync() {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
 				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
-				killPlayer(u, 'desync too high');
+				killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
 			}
 	});
 }

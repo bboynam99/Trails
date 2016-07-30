@@ -10,20 +10,29 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-Q: how should collision work when you grow?
 
-- powerup system
-- on turn, wipe out all phantoms in a 3x3 neiborhood (maybe not necessary)
-- large players are a bit too slow (not sure about that either)
-- +xp much more powerful powerups
+
+powerups 4/4:
+green: upond landing, channel to take someone's color, allowing you to freely move on their trail.
+red: upond landing, channel to steal points
+orange: your aoe effect now kills other players
+yellow: also clears power up on ground upond lading.
+blue: Allows you to clear other blocks in a short radius for a short duration upond lading.
+purple: next wall you hit will cause an aoe clearing effect, and will consume a red charge
+
+
+- wasad to move
+- phone support
+- if desync is a problem, force resynch on client (instead of kicking)
 
 - test with high lag
-- large LOS gray areas to indicate you're too far to see over there
-- eliminated, eliminated by messages 
-- client jitter when losing points
-- wasad to move
-- visual effect related to powerups
-- large screen doesn't load everything
-- phone support
 - onscreen explanation of powerups (maybe tips on deaths?)
+
 - player limit
+- server crash message
+- broad cast restart countdown with custom message
+- reconnect support
+- crash logs
+
+- add fun combos (teleport modifiers)
+- on turn, wipe out all phantoms in a 3x3 neiborhood (maybe not necessary)

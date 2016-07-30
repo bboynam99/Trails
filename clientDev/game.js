@@ -11,9 +11,10 @@ Game.prototype.handleNetwork = function(socket) {
 	bindKeyboard(c);
 	bindClickTap(c);
 	
-	// This is where all socket messages are received
-	socket.on('playerSpawn', function (newPlayer, board) {
-		initBoard(board.boardW,board.boardH);
+	// this is where all socket messages are received
+	socket.on('playerSpawn', function (newPlayer, b) {
+		initBoard(b.boardW,b.boardH, b.LOS);
+		console.log(b.LOS);
 		player = newPlayer;
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
@@ -78,10 +79,13 @@ Game.prototype.handleNetwork = function(socket) {
 		player.slots = selfUpdate.slots;
 	});
 	
-	socket.on('playerDied', function () {
+	socket.on('playerDied', function (message) {
 		gameOver = true;
 		lastFewBlocks = [];
 		lastFewBlocksId = 0;
+		player.size = 0;
+		otherPlayers = [];
+		deathMessage = message;
 	});
 	
 	socket.on('newHue', function (v) {
@@ -105,8 +109,9 @@ Game.prototype.handleLogic = function() {
 			lastFewBlocks[lastFewBlocksId] = player.lastPos;
 			lastFewBlocksId = (lastFewBlocksId+1) % FEW_BLOCKS_LENGTH;
 			// update if next square is different!
-			if(player.lastPos[0] <= 1 || player.lastPos[1] <= 1 || player.lastPos[0] >= board.W-2 || player.lastPos[1] >= board.H-2){
+			if(player.x < 0 || player.y < 0 || player.x > board.H-1 || player.y > board.W-1) {
 				updatePosition();
+				gameOver = true; // server will validate this anyways, but doing it on client aswell feels more responsive
 			}
 		}
 	}
@@ -123,12 +128,12 @@ Game.prototype.handleLogic = function() {
 Game.prototype.handleGraphics = function(gfx) {
 	if (!player) // the game hasn't initialize yet!
 		return;
-		
-	// This is where you draw everything
-	gfx.fillStyle = '#fbfcfc';
-	gfx.fillRect(0, 0, screenWidth, screenHeight);
+	
+	// this is where everything is drawn
 	
 	if(gameOver) {
+		gfx.fillStyle = '#fbfcfc';
+		gfx.fillRect(0, 0, screenWidth, screenHeight);
 		gfx.fillStyle = '#2ecc71';
 		gfx.strokeStyle = '#27ae60';
 		gfx.font = 'bold 50px Verdana';
@@ -136,11 +141,21 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.lineWidth = 2;
 		gfx.fillText('G A M E  O V E R', screenWidth * 0.5, screenHeight * 0.4);
 		gfx.strokeText('G A M E  O V E R', screenWidth * 0.5, screenHeight * 0.4);
-		gfx.font = 'bold 25px Verdana';
+		gfx.font = '24px Verdana';
+		gfx.fillText(deathMessage, screenWidth * 0.5, screenHeight * 0.4 + 50);
+		gfx.strokeText(deathMessage, screenWidth * 0.5, screenHeight * 0.4 + 50);
+		gfx.font = '20px Verdana';
 		gfx.fillText('press space bar to respawn...', screenWidth * 0.5, screenHeight * 0.7);
 		gfx.strokeText('press space bar to respawn...', screenWidth * 0.5, screenHeight * 0.7);
 		return;
 	}
+	
+	gfx.fillStyle = '#CCC';
+	gfx.fillRect(0, 0, screenWidth, screenHeight);
+	var cx = screenWidth / 2;
+	var cy = screenHeight / 2;
+	gfx.fillStyle = '#fbfcfc';
+	gfx.fillRect(cx - board.LOS, cy - board.LOS, 2*board.LOS, 2*board.LOS);
 
 	// draw board
 	drawBoard(gfx);
@@ -186,20 +201,22 @@ var board = {
 	H: 0,
 	W: 0,
 	blockId: null,
-	isPowerUp: null
+	isPowerUp: null,
+	LOS: 0
 };
 var colors = []; // contains all colors to be drawn, received from server.
 var links = [];
 var lastFewBlocks = []; //client will always trust itself for board state of these pts
-var lastFewBlocksId = 0; var FEW_BLOCKS_LENGTH = 5;
+var lastFewBlocksId = 0; var FEW_BLOCKS_LENGTH = 10;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
-
-function initBoard(H,W){
+var updateSize = [];
+function initBoard(H,W,LOS){
 	// Board
 	board.W = W;
 	board.H = H;
 	board.blockId = new Array(W);
 	board.isPowerUp = new Array(W);
+	board.LOS = LOS * BLOCK_TO_PIXELS;
 	for (var i=0;i<W;i++) {
 		board.blockId[i] = new Array(H);
 		board.isPowerUp[i] = new Array(H);
@@ -210,6 +227,7 @@ function initBoard(H,W){
 	}
 }
 var gameOver = false;
+var deathMessage = '';
 
 //
 /** Game drawing constants **/
@@ -289,8 +307,8 @@ function movePlayer(p, dt) {
 	squareX = Math.min(Math.max(squareX,0),board.W-1);
 	squareY = Math.min(Math.max(squareY,0),board.H-1);
 	board.blockId[squareX][squareY] = p.hue;
-	dilation(squareX,squareY,Math.floor(player.size),player.hue);
-		
+	dilation(squareX,squareY,Math.floor(p.size),p.hue);
+	
 	// check if it's a new value
 	var value = false;
 	if (p.lastPos && (p.lastPos[0] != squareX || p.lastPos[1] != squareY)) {
@@ -333,17 +351,18 @@ function drawPlayer(gfx, p){
 	coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOCK_SIZE_DISPLAY);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
 	// draw powerups
-	var k=0;
-	for(var i=0;i<2;i++)
-		for(var j=0;j<2;j++){
-			var id = player.slots[k++];
-			if(id > 0) {
-				gfx.fillStyle = POWERUPCOLOR[id - 1];
-				gfx.fillRect(coords[0] + coords[2]/2 * i,coords[1]+ coords[3]/2 * j,coords[2]/2,coords[3]/2);
+	if(p['slots']){
+		var k=0;
+		for(var i=0;i<2;i++)
+			for(var j=0;j<2;j++){
+				var id = p.slots[k++];
+				if(id > 0) {
+					gfx.fillStyle = POWERUPCOLOR[id - 1];
+					gfx.fillRect(coords[0] + coords[2]/2 * i,coords[1]+ coords[3]/2 * j,coords[2]/2,coords[3]/2);
+				}
 			}
-		}
-		
-		
+	}
+	
 	// draw name
 	gfx.fillStyle = 'hsl(' + p.hue + ', 100%, 90%)';
 	gfx.strokeStyle =  'hsl(' + p.hue + ', 90%, 40%)';
@@ -381,10 +400,14 @@ function getBonusSize(score) {
 function dilation(x,y,s,v) {
 	// make the line fatter
 	if (s > 0) {
-		for(i=-s;i<=s;i++)
-			for(j=-s;j<=s;j++)
-				if (board.blockId[x+i][y+j] == EMPTY_BLOCK) {
-					board.blockId[x+i][y+j] = v;
+		var x0 = Math.max(x - s,0);
+		var x1 = Math.min(x + s, board.W - 1);
+		var y0 = Math.max(y - s,0);
+		var y1 = Math.min(y + s, board.H - 1);
+		for(i=x0;i<=x1;i++)
+			for(j=y0;j<=y1;j++)
+				if (board.blockId[i][j] == EMPTY_BLOCK) {
+					board.blockId[i][j] = v;
 				}
 	}
 }
@@ -485,12 +508,12 @@ function drawLinks(gfx) {
 		});
 }
 
-function usePowerup() {
+function useAbility() {
 	if(player && player.cooldown == 0) {
 		var tx = Math.round(player.x + player.dx * player.teleportDist);
 		var ty = Math.round(player.y + player.dy * player.teleportDist);
 		
-		if(tx > 1 && ty > 1 && tx < board.W-2 && ty < board.H-2) {
+		if((player.dx != 0 && tx > 1 && tx < board.W-2) || (player.dy != 0 && ty > 1 && ty < board.H-2)) {
 			player.x = tx;
 			player.y = ty;
 			socket.emit('powerupUsed',tx, ty);
@@ -556,7 +579,7 @@ function bindClickTap(c) {
 			if(gameOver) // SPACE BAR LOGIC
 				socket.emit('respawnRequest', playerName);
 			else if(!gameOver)
-				usePowerup();
+				useAbility();
 			return;
 		}
 		
@@ -589,7 +612,7 @@ function directionDown(event) {
 		if(gameOver)
 			socket.emit('respawnRequest', playerName);
 		else if(!gameOver)
-			usePowerup();
+			useAbility();
 	}
 }
 
