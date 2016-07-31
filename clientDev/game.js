@@ -95,6 +95,10 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('updateLeaderBoard', function (leaderBoard) {
 		displayLeaderBoard(leaderBoard);
 	});	
+	
+	socket.on('newAbility', function (description) {
+		document.getElementById('powerups').innerHTML = description;
+	});
 }
 
 Game.prototype.handleLogic = function() {

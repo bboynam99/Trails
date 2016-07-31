@@ -99,19 +99,30 @@ canvas {
   font-size : 12px;
 }
 
-#status {
+.status {
     position: absolute;
     padding: 10px;
-    background: rgba(0, 0, 0, 0.4);
-    color: #FFF;
     font-size: 16.1px;
-    top: 10px;
-    right: 10px;
-    font-weight: bold;
     text-align: center;
 }
 
-#status h1 {
+.powerups {
+    background: rgba(0, 0, 0, 0.4);
+    color: #FFF;
+    bottom: 10px;
+    left: 10px;
+    font-weight: bold;
+}
+
+.leaderboard {
+    background: rgba(0, 0, 0, 0.4);
+    color: #FFF;
+    top: 10px;
+    right: 10px;
+    font-weight: bold;
+}
+
+.leaderboard h1 {
     font-size: 25px;
 }
 

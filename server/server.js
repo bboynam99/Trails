@@ -688,6 +688,9 @@ function pickupPowerUp(player, powerUpType) {
 				return false;
 		return true;
 	});
+	
+	if(player.specialAbility)
+		sockets[player.id].emit('newAbility', player.specialAbility.description);
 }
 
 // this function kicks players that are out of synch with the game clock.

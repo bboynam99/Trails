@@ -46,7 +46,7 @@ module.exports = {
 		},
 		{
 			name: '4 reds',
-			description: 'The next wall you hit will trigger a medium size clearing effect, as well as your teleport cooldown.',
+			description: 'The next wall you hit will cause a large clearing effect and trigger your teleport cooldown.',
 			recipe: [0,0,0,0,4,0]
 		},
 		{
