@@ -4,7 +4,8 @@ var http    = require('http').Server(app);
 var io      = require('socket.io')(http);
 var config  = require('./config.json');
 app.use(express.static(__dirname + '/../client'));
-
+var abilities = require('./abilities.js'); 
+abilities = abilities.abilities;
 //
 /** Game Constants **/
 //
@@ -45,8 +46,6 @@ var PU_TELE_AOE = 3; // bonus radius per PU
 var PU_PTS_LOSS_MOD = -2.4; // The point loss modifier when stepping on own track
 var PU_POINTS_MOD = 10; // bonus points per sec per PU
 var PU_TELE_RANGE = 4; // bonus teleport distance
-
-
 
 //
 /** Game variables **/

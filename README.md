@@ -13,17 +13,18 @@ This is private repo for the next big online io game.
 
 
 powerups 4/4:
-green: upond landing, channel to take someone's color, allowing you to freely move on their trail.
-red: upond landing, channel to steal points
-orange: your aoe effect now kills other players
-yellow: also clears power up on ground upond lading.
-blue: Allows you to clear other blocks in a short radius for a short duration upond lading.
-purple: next wall you hit will cause an aoe clearing effect, and will consume a red charge
+green: After teleporting, you channel a beam on a nearby player in attempt to steal his color.
+red: The next wall you hit will trigger a clearing effect, as well as your teleport cooldown.
+orange: Your teleport clearing effect can now kill other players
+yellow: Your teleport clearing effect now also removes nearby power ups.
+blue: After teleporting, you also clear blocks in a small radius for a short duration upond lading.
+purple: After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.
 
 
 - wasad to move
 - phone support
-- if desync is a problem, force resynch on client (instead of kicking)
+- if desync is a problem, force resync on client (instead of kicking)**
+- also teleport seems to be glitched (cuases out of sync).
 
 - test with high lag
 - onscreen explanation of powerups (maybe tips on deaths?)
