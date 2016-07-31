@@ -3,49 +3,10 @@ var app     = express();
 var http    = require('http').Server(app);
 var io      = require('socket.io')(http);
 var config  = require('./config.json');
+require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
 var abilities = require('./abilities.js'); 
 abilities = abilities.abilities;
-//
-/** Game Constants **/
-//
-var SPAWN_SPACE_NEEDED = 10;
-var INITIAL_VELOCITY = 12.0;
-var DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
-var DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
-var NUM_POWERUPS_ONBOARD = 10;
-var WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
-var LINK_START = 0.25; // link will show after this (ms)
-var LINK_END = 3; // link will end after this
-var LINK_RANGE = 5; // link will start at this distance
-var LINK_SUSTAIN = 8; // link will stay alive at this range (hysteresis)
-var LINK_ALLIANCE_T = 0.4; // players need to be roughly the same before they can ally
-var TELE_CLEAR_RADIUS = 4; // upond landing, a circle of this radius will be cleared
-var TELE_DISTANCE = 8; 
-var TELE_COOLDOWN = 10;
-var MAX_HEARTBEAT_KICK = 2000; // player will be killed after no input (ms);
-var MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
-var PU_SLOTS = 4; // the number of powerups a player can carry at once
-// Flags for the bloc board state
-var B_EMPTY = 0;
-var B_BORDERS = 10;
-var B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
-// PowerUp flags
-var PU_ID_NONE = 0;
-var PU_ID_SPEED = 1;
-var PU_ID_TELECD = 2;
-var PU_ID_TELEAOE = 3;
-var PU_ID_PTSLOSS = 4;
-var PU_ID_POINTS = 5;
-var PU_ID_TELERANGE = 6;
-var MAX_POWERUP_ID = 6; // UPDATE THIS everytime a new power up is added
-
-var PU_SPEED_MOD = 1.25; // bloc per second per PU
-var PU_TELE_CD = 2.25; // bonus sec cd per PU
-var PU_TELE_AOE = 3; // bonus radius per PU
-var PU_PTS_LOSS_MOD = -2.4; // The point loss modifier when stepping on own track
-var PU_POINTS_MOD = 10; // bonus points per sec per PU
-var PU_TELE_RANGE = 4; // bonus teleport distance
 
 //
 /** Game variables **/
@@ -56,9 +17,10 @@ var board = { // game board
 	W: 50,
 	blockId: null,
 	isPowerUp: null,
-	BlockTs: null
+	BlockTs: null,
+	numPowerUpsOnBoard: 0
 };
-var numPowerUpsOnBoard = 0;
+
 // init board
 board.blockId = new Array(board.W);
 board.isPowerUp = new Array(board.W);
@@ -123,7 +85,8 @@ io.on('connection', function (socket) {
 		desyncCounter: 0, // the cumulated delta between client and server
 		lastSlotFilled: 0,
 		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
-		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0)
+		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
+		specialAbility: undefined
 	};
 	colorsLUT[player.blocId] = player.hue;
 	blocIdLUT[blocIdGenerator] = player;
@@ -261,11 +224,8 @@ function moveloop(dt) {
 function gameloop() {
 	dt = tick();
 	
-	// interpolate player position
-	moveloop(dt);
-	// spawn xp
+	moveloop(dt); // interpolate player position
 	spawnPowerUps();
-	// update links
 	updateLinks(dt);
 	// update cooldowns, scores and velocity
 	users.forEach( function(u) {
@@ -457,10 +417,10 @@ function afterInterpolationMove(x,y,p) {
 	//try {
 		for(i=x0;i<=x1;i++)
 			for(j=y0;j<=y1;j++)
-				if(board.isPowerUp[i][j]) {
+				if(board.isPowerUp[i][j] != PU_ID_NONE) {
 					var id = board.isPowerUp[i][j];
 					board.isPowerUp[i][j] = PU_ID_NONE;
-					numPowerUpsOnBoard--;
+					board.numPowerUpsOnBoard--;
 					pickupPowerUp(p, id);
 				}					
 	//catch(x){} // too lazy to check limits
@@ -536,12 +496,12 @@ function findGoodSpawn() {
 }
 
 function spawnPowerUps() {
-	if(numPowerUpsOnBoard < NUM_POWERUPS_ONBOARD) {
+	if(board.numPowerUpsOnBoard < NUM_POWERUPS_ONBOARD) {
 		var x = getRandomInt(1,board.W - 2); // cannot spawn on borders
 		var y = getRandomInt(1,board.H - 2);
 		if(board.blockId[x][y] == B_EMPTY && !board.isPowerUp[x][y] && !playerBoard[x][y]) {
 			board.isPowerUp[x][y] = getRandomInt(1,MAX_POWERUP_ID);
-			numPowerUpsOnBoard++;
+			board.numPowerUpsOnBoard++;
 		}
 	}
 }
@@ -594,7 +554,7 @@ function updateLinks(dt) {
 	};
 }
 function checkForLink(playerA, playerB) {
-	if(links) {
+	/*if(links) {
 		if(playerA.slotAggregation[PU_ID_PTSLOSS-1] > 0) { // has the ability to ally
 			if(colorsLUT[playerA.blocId] != colorsLUT[playerB.blocId]) { // different colors
 				if(playerB.pts >= playerA.pts * (1-LINK_ALLIANCE_T) && playerB.pts <= playerA.pts * (1/LINK_ALLIANCE_T)) { // is withing threshold
@@ -615,7 +575,7 @@ function checkForLink(playerA, playerB) {
 				}
 			}
 		}
-	}
+	}*/
 }
 
 function getRandomInt(min, max) {
@@ -680,6 +640,9 @@ function teleportPlayer(player) {
 		}
 	}
 	player.cooldown = player.maxCooldown;
+	
+	if(player.specialAbility && player.specialAbility.onTeleportLanding)
+		player.specialAbility.onTeleportLanding(board,playerBoard,x,y,r,player);
 }
 
 var now;
@@ -716,6 +679,14 @@ function pickupPowerUp(player, powerUpType) {
 		dpts: player.dpts,
 		lpr: player.lpr,
 		teleportDist: player.teleportDist
+	});
+	
+	// update ability
+	player.specialAbility = abilities.find( function(a) {
+		for(var i=0;i<MAX_POWERUP_ID;i++)
+			if(player.slotAggregation[i] != a.recipe[i])
+				return false;
+		return true;
 	});
 }
 
