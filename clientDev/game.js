@@ -13,8 +13,8 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	// this is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, b) {
+		document.getElementById('powerups').innerHTML = ''; // clear powerup description
 		initBoard(b.boardW,b.boardH, b.LOS);
-		console.log(b.LOS);
 		player = newPlayer;
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
@@ -99,6 +99,12 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('newAbility', function (description) {
 		document.getElementById('powerups').innerHTML = description;
 	});
+	
+	socket.on('eliminatedPlayer', function () {
+		console.log('eliminate player.');
+		var lastFewBlocks = [];
+		var lastFewBlocksId = 0; 
+	});
 }
 
 Game.prototype.handleLogic = function() {
@@ -112,18 +118,27 @@ Game.prototype.handleLogic = function() {
 		if(player.lastPos) { // this queue remembers last few values to reduce flicker from client-server disagreement
 			lastFewBlocks[lastFewBlocksId] = player.lastPos;
 			lastFewBlocksId = (lastFewBlocksId+1) % FEW_BLOCKS_LENGTH;
-			// update if next square is different!
+			
+			// update if next block is edge
 			if(player.x < 0 || player.y < 0 || player.x > board.H-1 || player.y > board.W-1) {
 				updatePosition();
 				gameOver = true; // server will validate this anyways, but doing it on client aswell feels more responsive
 			}
+			var newC = board.blockId[player.lastPos[0]][player.lastPos[1]];
+			console.log('new square=' + newC + ' and player color = ' + player.hue);
+			if(player.hue != newC && newC != EMPTY_BLOCK) {
+				updatePosition();
+				//gameOver = true;
+			}
 		}
+		board.blockId[player.lastPos[0]][player.lastPos[1]] = player.hue; // gives a smooth display
 	}
 	
 	updatePlayerDirection();
 	if (otherPlayers)
 		otherPlayers.forEach( function(o) {
-			movePlayer(o, dt);
+			if (movePlayer(o, dt))
+				board.blockId[o.lastPos[0]][o.lastPos[1]] = o.hue; // gives a smooth display
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
@@ -310,7 +325,6 @@ function movePlayer(p, dt) {
 	var squareX = Math.round(p.x - p.dx*.5), squareY = Math.round(p.y - p.dy*.5);
 	squareX = Math.min(Math.max(squareX,0),board.W-1);
 	squareY = Math.min(Math.max(squareY,0),board.H-1);
-	board.blockId[squareX][squareY] = p.hue;
 	dilation(squareX,squareY,Math.floor(p.size),p.hue);
 	
 	// check if it's a new value
@@ -324,13 +338,13 @@ function movePlayer(p, dt) {
 	var x = Math.round(p.x + p.dx*(Math.floor(p.size)+1)), y = Math.ceil(p.y + p.dy*(Math.floor(p.size)+1));
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
 		if(board.blockId[x][y] == p.hue) {
-			player.lastDeltaPts = (player.dpts*player.lpr);
+			p.lastDeltaPts = (p.dpts*p.lpr);
 			//console.log('red');
 		}else
-			player.lastDeltaPts = player.dpts;
+			p.lastDeltaPts = p.dpts;
 		
-		player.pts += player.lastDeltaPts * dt;
-		//console.log('points changed to: ' + Math.round(player.pts));
+		p.pts += p.lastDeltaPts * dt;
+		//console.log('points changed to: ' + Math.round(p.pts));
 	}
 	return value;
 }
@@ -434,9 +448,9 @@ function drawBoard(gfx){
 		} else {
 			targetC = colors[c];
 			if(targetC == player.hue) // self color is darker
-				gfx.fillStyle = 'hsl(' + targetC + ', 70%, 40%)';
+				gfx.fillStyle = 'hsl(' + targetC + ', 100%, 60%)';
 			else
-				gfx.fillStyle = 'hsl(' + targetC + ', 50%, 80%)';
+				gfx.fillStyle = 'hsl(' + targetC + ', 70%, 80%)';
 		}
 		
 		var pad = HALF_BLOCK_SIZE_DISPLAY*2;
@@ -536,7 +550,7 @@ function displayLeaderBoard(leaderboard) {
 			status += '<br />';
 			status += '<span style="float:left">' + (i++) + '. ' + l.name + '</span>&nbsp;&nbsp;&nbsp;' + '<span style="float:right">' + l.score + '</span>';
 		});
-	document.getElementById('status').innerHTML = status;
+	document.getElementById('leaderboard').innerHTML = status;
 }
 
 function boardToScreen(x,y,isfloat){

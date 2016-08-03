@@ -2,7 +2,7 @@
 // this is the ordering (for reference only) : purple, yellow, blue, green, red, orange
 // the functions that may be defined for each ability are:
 // onTeleportLanding(board,playerLUT,x,y,p)
-// onBeamComplete()
+// onLinkComplete(A,B,board,sockets)
 // onPlayerWallHit()
 // onChangePosition()
 module.exports = {
@@ -11,32 +11,53 @@ module.exports = {
 			name: '4 purples',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
 			recipe: [4,0,0,0,0,0],
+			onTeleportLanding: function(board,playerLUT,x,y,p) {
+				console.log('Player ' + p.name + ' landed, looking for neaby player in a radius of ' + LINK_RANGE);
+				var nearestPlayer = applyLogicAtPosition(x,y,LINK_RANGE,board,playerLUT, function(x,y,r,board,playerLUT,result) {					
+					if(x == p.x && y == p.y) // skip self
+						return result;
+					
+					var o = playerLUT[x][y];
+					
+					if(!result) // ignore empty cells
+						return o;
+					if(!o)
+						return result;
+					
+					// keep nearest player
+					if(Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
+						return result;
+					else
+						return o;
+				});
+				if(nearestPlayer) // create link if possible
+					checkForLink(board, p, nearestPlayer);
+				console.log('found this nearby player:' + nearestPlayer);
+			},
+			onLinkComplete: function(A,B,board,sockets) {
+				var ptsLoss = B.pts * ABILITY_4_PURPLE_POINTS_STEAL_RATIO;
+				B.pts -= ptsLoss;
+				A.pts += ptsLoss;
+			}
 		},
 		{
 			name: '4 yellows',
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
 			recipe: [0,4,0,0,0,0],
-			onTeleportLanding: function(board,playerLUT,x,y,r,p) {
-				r = Math.round(r * 2);
-				X0 = Math.max(x - r,1);
-				X1 = Math.min(x + r, board.W-2);
-				Y0 = Math.max(y - r,1);
-				Y1 = Math.min(y + r, board.H-2);
-				for (var i=X0;i<=X1;i++) {
-					for (var j=Y0;j<=Y1;j++) {
-						if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= r)
-							if(board.isPowerUp[i][j] != PU_ID_NONE) {
-							var id = board.isPowerUp[i][j];
-							board.isPowerUp[i][j] = PU_ID_NONE;
-							board.numPowerUpsOnBoard--;
-						}					
+			onTeleportLanding: function(board,playerLUT,x,y,p) {
+				var r = 
+				applyLogicAtPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS,board,playerLUT, function(x,y,r,board,playerLUT,result){
+					if(board.isPowerUp[x][y] != PU_ID_NONE) {
+						var id = board.isPowerUp[x][y];
+						board.isPowerUp[x][y] = PU_ID_NONE;
+						board.numPowerUpsOnBoard--;
 					}
-				}
+				});
 			}
 		},
 		{
 			name: '4 blues',
-			description: 'After teleporting, you also clear blocks in a small radius for a short duration upond lading.',
+			description: 'After teleporting, you also clear blocks in a small radius for a short duration upond landing.',
 			recipe: [0,0,4,0,0,0]
 		},
 		{
@@ -57,4 +78,62 @@ module.exports = {
 	]
 };
 
+//
+// A bunch of helper functions
+//
 
+function checkForLink(board, playerA, playerB) {
+	if(board.links) {
+		if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) { // link range
+			if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
+				console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
+				board.links[playerA] = {
+					fromP: playerA,
+					toP: playerB,
+					dt: 0
+				}
+			}
+		}
+	}
+}
+
+// calls logic(x,y,r,board,previousResult) at each position, in a "fold left" fashion
+function applyLogicAtPosition(x,y,r,board,playerLUT,logic) {
+	r = Math.round(r * 2);
+	X0 = Math.max(x - r,1);
+	X1 = Math.min(x + r, board.W-2);
+	Y0 = Math.max(y - r,1);
+	Y1 = Math.min(y + r, board.H-2);
+	result = undefined;
+	for (var i=X0;i<=X1;i++) {
+		for (var j=Y0;j<=Y1;j++) {
+			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= r)
+				result = logic(i,j,r,board,playerLUT,result);
+		}
+	}
+	return result;
+}
+
+// this may be useful at some point..
+	/*if(board.links) {
+		if(playerA.slotAggregation[PU_ID_PTSLOSS-1] > 0) { // has the ability to ally
+			if(board.colorsLUT[playerA.blocId] != board.colorsLUT[playerB.blocId]) { // different colors
+				if(playerB.pts >= playerA.pts * (1-LINK_ALLIANCE_T) && playerB.pts <= playerA.pts * (1/LINK_ALLIANCE_T)) { // is withing threshold
+					if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) { // link range
+						if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) { // direction is the same
+							if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
+								if(playerA.pts > playerB.pts) {
+									console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
+									board.links[playerA] = {
+										fromP: playerA,
+										toP: playerB,
+										dt: 0
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}*/

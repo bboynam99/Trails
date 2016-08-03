@@ -18,8 +18,12 @@ var board = { // game board
 	blockId: null,
 	isPowerUp: null,
 	BlockTs: null,
-	numPowerUpsOnBoard: 0
+	numPowerUpsOnBoard: 0,
+	links: [],
+	colorsLUT: []
 };
+board.links = []; // link maps between players
+board.colorsLUT = [];
 
 // init board
 board.blockId = new Array(board.W);
@@ -48,8 +52,6 @@ for (var i=0;i<board.W;i++) {
 
 var blocIdLUT = {};
 var blocIdGenerator = 11;
-var links = []; // link maps between players
-var colorsLUT = [];
 var leaderBoard = [];
 
 //
@@ -84,11 +86,11 @@ io.on('connection', function (socket) {
 		blocId: blocIdGenerator,
 		desyncCounter: 0, // the cumulated delta between client and server
 		lastSlotFilled: 0,
-		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
+		slots: [PU_ID_SPEED,PU_ID_SPEED,PU_ID_SPEED,PU_ID_SPEED],//Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
 		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
 		specialAbility: undefined
 	};
-	colorsLUT[player.blocId] = player.hue;
+	board.colorsLUT[player.blocId] = player.hue;
 	blocIdLUT[blocIdGenerator] = player;
 	blocIdGenerator++;
 	
@@ -111,7 +113,7 @@ io.on('connection', function (socket) {
 	// emit [player, board]
 	function emitRespawn() {
 		player.hue = getUnusedColor(); // player is no longer part of any other hue groups!
-		colorsLUT[player.blocId] = player.hue;
+		board.colorsLUT[player.blocId] = player.hue;
 		player.isDead = false;
 		socket.emit('playerSpawn',{ // the player
 			x: player.x,
@@ -168,7 +170,7 @@ io.on('connection', function (socket) {
 	socket.on('disconnect', function () {
 		killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
 		delete sockets[player.id];
-		delete colorsLUT[player.blocId];
+		delete board.colorsLUT[player.blocId];
 		var index = users.indexOf(player);
 		if (index > -1){
             users.splice(index, 1);
@@ -303,7 +305,7 @@ function sendUpdatesPlayers() {
 
 			var otherPlayers = [];
 			var newLinks = [];
-			var l = links[u];
+			var l = board.links[u];
 			if(l && l.dt >= LINK_START) {
 				newLinks.push(toClientLink(l));
 			}
@@ -325,13 +327,10 @@ function sendUpdatesPlayers() {
 								dpts: o.dpts,
 								slots: o.slots
 							});
-							l = links[otherPlayers];
+							l = board.links[otherPlayers];
 							if(l && l.dt >= LINK_START) {
 								newLinks.push(toClientLink(l));
 							}
-								
-							// while were at it, check for links
-							checkForLink(u, o);
 						}
 					}
 				}
@@ -394,7 +393,7 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 				board.blockId[x0][y0] = v;
 				board.BlockTs[x0][y0] = now;
 				dilation(x0,y0,p,p.blocId);
-			} else if(p && colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
+			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
 				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
 				break;
 			}
@@ -433,8 +432,8 @@ function afterInterpolationMove(x,y,p) {
 function beforeConfirmedMove(x,y,p) {
 	// update points
 	
-	if(board.blockId[x][y]*-1 != p.id && colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 900/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
-		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.BlockTs[x][y]) +'ms');
+	if(board.blockId[x][y]*-1 != p.id && board.colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 900/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
+		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (board.colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.BlockTs[x][y]) +'ms');
 		p.pts += (p.dpts*p.lpr) / p.velocity;
 		//console.log('--');
 	} else {
@@ -536,47 +535,23 @@ function cleanPhantomTrails() {
 }
 
 function updateLinks(dt) {
-	for (var key in links) {
-		var l = links[key];
+	for (var key in board.links) {
+		var l = board.links[key];
 		var A = l.fromP, B = l.toP;
 		var dist = (Math.abs(A.x - B.x) + Math.abs(A.y - B.y));
 		if(A.isDead || B.isDead || dist > LINK_SUSTAIN ) {
-			delete links[key]; // link broken!
+			delete board.links[key]; // link broken!
 		} else {
 			l.dt += dt;
 			if(l.dt >= LINK_END) { // link conversion is complete!
-				B.hue = A.hue;
-				delete links[key];
-				colorsLUT[B.blocId] = B.hue;
-				sockets[B.id].emit('newHue', B.hue);
+				if(A.specialAbility && A.specialAbility.onLinkComplete)
+					A.specialAbility.onLinkComplete(A,B,board,sockets);
+				delete board.links[key];
 			}
 		}
 	};
 }
-function checkForLink(playerA, playerB) {
-	/*if(links) {
-		if(playerA.slotAggregation[PU_ID_PTSLOSS-1] > 0) { // has the ability to ally
-			if(colorsLUT[playerA.blocId] != colorsLUT[playerB.blocId]) { // different colors
-				if(playerB.pts >= playerA.pts * (1-LINK_ALLIANCE_T) && playerB.pts <= playerA.pts * (1/LINK_ALLIANCE_T)) { // is withing threshold
-					if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) { // link range
-						if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) { // direction is the same
-							if(!(playerA in links) && !(playerB in links)) { // players don't already have a link
-								if(playerA.pts > playerB.pts) {
-									console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
-									links[playerA] = {
-										fromP: playerA,
-										toP: playerB,
-										dt: 0
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}*/
-}
+
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -592,6 +567,7 @@ function hasCrashedInto(crashee, crasher) {
 		}
 	}
 	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name, 'You were eliminated by ' + crashee.name + '.');
+	sockets[crashee.id].emit('eliminatedPlayer');
 }
 
 function killPlayer(p, reason, message) {
@@ -602,6 +578,7 @@ function killPlayer(p, reason, message) {
 		p.pts = 0;
 		p.cooldown = TELE_COOLDOWN;
 		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
+		p.bonusSizeCache = 0;
 		
 		for (var i=0;i<PU_SLOTS;i++)
 			p.slots[i] = PU_ID_NONE;
@@ -642,7 +619,7 @@ function teleportPlayer(player) {
 	player.cooldown = player.maxCooldown;
 	
 	if(player.specialAbility && player.specialAbility.onTeleportLanding)
-		player.specialAbility.onTeleportLanding(board,playerBoard,x,y,r,player);
+		player.specialAbility.onTeleportLanding(board,playerBoard,x,y,player);
 }
 
 var now;
@@ -691,6 +668,8 @@ function pickupPowerUp(player, powerUpType) {
 	
 	if(player.specialAbility)
 		sockets[player.id].emit('newAbility', player.specialAbility.description);
+	else
+		sockets[player.id].emit('newAbility', '');
 }
 
 // this function kicks players that are out of synch with the game clock.
@@ -710,7 +689,7 @@ function getUnusedColor() {
 	
 	var blackList = new Array(360);
 	
-	colorsLUT.forEach( function(c) {
+	board.colorsLUT.forEach( function(c) {
 		blackList[c] = true;
 	});
 	
