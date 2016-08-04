@@ -2,15 +2,15 @@
 /** Game Constants **/
 //
 global.SPAWN_SPACE_NEEDED = 10;
-global.INITIAL_VELOCITY = 4.0;
+global.INITIAL_VELOCITY = 10.0;
 global.DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 global.DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
 global.NUM_POWERUPS_ONBOARD = 20;
 global.WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
-global.LINK_START = 0.25; // link will show after this (ms)
-global.LINK_END = 3; // link will end after this
-global.LINK_RANGE = 50; // link will start at this distance
-global.LINK_SUSTAIN = 80; // link will stay alive at this range (hysteresis)
+global.LINK_START = 0.15; // link will show after this (ms)
+global.LINK_END = 1.5; // link will end after this
+global.LINK_RANGE = 10; // link will start at this distance
+global.LINK_SUSTAIN = 12; // link will stay alive at this range (hysteresis)
 global.TELE_CLEAR_RADIUS = 4; // upond landing; a circle of this radius will be cleared
 global.TELE_DISTANCE = 8; 
 global.TELE_COOLDOWN = 10;
@@ -40,4 +40,5 @@ global.PU_TELE_RANGE = 4; // bonus teleport distance
 
 // abilities constants
 global.ABILITY_4_YELLOW_CLEAR_RADIUS = 8;
-global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.20; // the ratio of points stolen
+global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.40; // the ratio of points stolen
+global.ABILITY_4_ORANGE_KILL_RADIUS = 80; // the ratio of points stolen

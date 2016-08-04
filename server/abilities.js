@@ -12,27 +12,9 @@ module.exports = {
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
 			recipe: [4,0,0,0,0,0],
 			onTeleportLanding: function(board,playerLUT,x,y,p) {
-				console.log('Player ' + p.name + ' landed, looking for neaby player in a radius of ' + LINK_RANGE);
-				var nearestPlayer = applyLogicAtPosition(x,y,LINK_RANGE,board,playerLUT, function(x,y,r,board,playerLUT,result) {					
-					if(x == p.x && y == p.y) // skip self
-						return result;
-					
-					var o = playerLUT[x][y];
-					
-					if(!result) // ignore empty cells
-						return o;
-					if(!o)
-						return result;
-					
-					// keep nearest player
-					if(Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
-						return result;
-					else
-						return o;
-				});
+				var nearestPlayer = findNearestPlayer(x,y,LINK_RANGE,board,playerLUT,p);
 				if(nearestPlayer) // create link if possible
-					checkForLink(board, p, nearestPlayer);
-				console.log('found this nearby player:' + nearestPlayer);
+					createLink(board, p, nearestPlayer);
 			},
 			onLinkComplete: function(A,B,board,sockets) {
 				var ptsLoss = B.pts * ABILITY_4_PURPLE_POINTS_STEAL_RATIO;
@@ -45,8 +27,7 @@ module.exports = {
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
 			recipe: [0,4,0,0,0,0],
 			onTeleportLanding: function(board,playerLUT,x,y,p) {
-				var r = 
-				applyLogicAtPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS,board,playerLUT, function(x,y,r,board,playerLUT,result){
+				applyLogicAtPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS, function(x,y,result) {
 					if(board.isPowerUp[x][y] != PU_ID_NONE) {
 						var id = board.isPowerUp[x][y];
 						board.isPowerUp[x][y] = PU_ID_NONE;
@@ -62,8 +43,18 @@ module.exports = {
 		},
 		{
 			name: '4 greens',
-			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal his color.',
-			recipe: [0,0,0,4,0,0]
+			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal their color.',
+			recipe: [0,0,0,4,0,0],
+			onTeleportLanding: function(board,playerLUT,x,y,p) {
+				var nearestPlayer = findNearestPlayer(x,y,LINK_RANGE,board,playerLUT,p);
+				if(nearestPlayer) // create link if possible
+					createLink(board, p, nearestPlayer);
+			},
+			onLinkComplete: function(A,B,board,sockets) {
+				A.hue = B.hue;
+				colorsLUT[A.blocId] = A.hue;
+				sockets[A.id].emit('newHue', A.hue);
+			}
 		},
 		{
 			name: '4 reds',
@@ -73,7 +64,12 @@ module.exports = {
 		{
 			name: '4 oranges',
 			description: 'Your teleport clearing effect can now kill other players.',
-			recipe: [0,0,0,0,0,4]
+			recipe: [0,0,0,0,0,4],
+			onTeleportLanding: function(board,playerLUT,x,y,p) {
+				var nearestPlayer = findNearestPlayer(x,y,ABILITY_4_ORANGE_KILL_RADIUS,board,playerLUT,p);
+				if(nearestPlayer) // kill players! TODO: the line below does not work :( need to find a visibility solution.
+					hasCrashedInto(p, nearestPlayer, 'You were eliminated by ' + p.name + '\'s power up ability.');
+			}
 		}
 	]
 };
@@ -82,23 +78,21 @@ module.exports = {
 // A bunch of helper functions
 //
 
-function checkForLink(board, playerA, playerB) {
+function createLink(board, playerA, playerB) {
 	if(board.links) {
-		if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) { // link range
-			if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
-				console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
-				board.links[playerA] = {
-					fromP: playerA,
-					toP: playerB,
-					dt: 0
-				}
+		if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
+			console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
+			board.links[playerA] = {
+				fromP: playerA,
+				toP: playerB,
+				dt: 0
 			}
 		}
 	}
 }
 
 // calls logic(x,y,r,board,previousResult) at each position, in a "fold left" fashion
-function applyLogicAtPosition(x,y,r,board,playerLUT,logic) {
+function applyLogicAtPosition(x,y,r,board,logic) {
 	r = Math.round(r * 2);
 	X0 = Math.max(x - r,1);
 	X1 = Math.min(x + r, board.W-2);
@@ -108,10 +102,30 @@ function applyLogicAtPosition(x,y,r,board,playerLUT,logic) {
 	for (var i=X0;i<=X1;i++) {
 		for (var j=Y0;j<=Y1;j++) {
 			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= r)
-				result = logic(i,j,r,board,playerLUT,result);
+				result = logic(i,j,result);
 		}
 	}
 	return result;
+}
+
+function findNearestPlayer(x,y,r,board,playerLUT,p){
+	return applyLogicAtPosition(x,y,r,board, function(x,y,result) {					
+		if(x == p.x && y == p.y) // skip self
+			return result;
+		
+		var o = playerLUT[x][y];
+		
+		if(!result) // ignore empty cells
+			return o;
+		if(!o)
+			return result;
+		
+		// keep nearest player
+		if(Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
+			return result;
+		else
+			return o;
+	});
 }
 
 // this may be useful at some point..

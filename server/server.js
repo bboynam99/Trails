@@ -86,7 +86,7 @@ io.on('connection', function (socket) {
 		blocId: blocIdGenerator,
 		desyncCounter: 0, // the cumulated delta between client and server
 		lastSlotFilled: 0,
-		slots: [PU_ID_SPEED,PU_ID_SPEED,PU_ID_SPEED,PU_ID_SPEED],//Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
+		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
 		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
 		specialAbility: undefined
 	};
@@ -432,7 +432,7 @@ function afterInterpolationMove(x,y,p) {
 function beforeConfirmedMove(x,y,p) {
 	// update points
 	
-	if(board.blockId[x][y]*-1 != p.id && board.colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 900/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
+	if(board.blockId[x][y]*-1 != p.id && board.colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 2000/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
 		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (board.colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.BlockTs[x][y]) +'ms');
 		p.pts += (p.dpts*p.lpr) / p.velocity;
 		//console.log('--');
@@ -557,7 +557,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function hasCrashedInto(crashee, crasher) {
+function hasCrashedInto(crashee, crasher, customMsg) {
 	crashee.pts += crasher.pts;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
@@ -566,7 +566,9 @@ function hasCrashedInto(crashee, crasher) {
 			}
 		}
 	}
-	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name, 'You were eliminated by ' + crashee.name + '.');
+	if(!customMsg)
+		customMsg = 'You were eliminated by ' + crashee.name + '.';
+	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name, customMsg);
 	sockets[crashee.id].emit('eliminatedPlayer');
 }
 
