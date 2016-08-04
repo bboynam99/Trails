@@ -84,6 +84,7 @@ Game.prototype.handleNetwork = function(socket) {
 		lastFewBlocks = [];
 		lastFewBlocksId = 0;
 		player.size = 0;
+		player.pts = 0;
 		otherPlayers = [];
 		deathMessage = message;
 	});
@@ -104,6 +105,12 @@ Game.prototype.handleNetwork = function(socket) {
 		console.log('eliminate player.');
 		var lastFewBlocks = [];
 		var lastFewBlocksId = 0; 
+	});
+	
+	socket.on('sync', function (x,y) {
+		player.x = x;
+		player.y = y;
+		updatePosition(); // update with server
 	});
 }
 
@@ -536,10 +543,14 @@ function useAbility() {
 			player.y = ty;
 			socket.emit('powerupUsed',tx, ty);
 			// TODO: draw a big red circle (explosion) on land
-			player.cooldown = player.maxCooldown;
+			triggerCooldown(player);
 			clearFutureTurns(); // this is necessary, otherwise player goes nuts
 		}
 	}
+}
+
+function triggerCooldown(player) {
+	player.cooldown = player.maxCooldown;
 }
 
 function displayLeaderBoard(leaderboard) {

@@ -1,23 +1,25 @@
 // this file contains the definition for all abilities
 // this is the ordering (for reference only) : purple, yellow, blue, green, red, orange
 // the functions that may be defined for each ability are:
-// onTeleportLanding(board,playerLUT,x,y,p)
-// onLinkComplete(A,B,board,sockets)
-// onPlayerWallHit()
-// onChangePosition()
+// onTeleportLanding(x,y,p)
+// onLinkComplete(A,B)
+// onPlayerWallHit(x,y,p) // returns true if player lives, false if he dies
+// onChangePosition(x,y,p)
+require('./server.js');
+
 module.exports = {
   abilities: [
 		{
 			name: '4 purples',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
 			recipe: [4,0,0,0,0,0],
-			onTeleportLanding: function(board,playerLUT,x,y,p) {
+			onTeleportLanding: function(x,y,p) {
 				console.log('Player ' + p.name + ' landed, looking for neaby player in a radius of ' + LINK_RANGE);
-				var nearestPlayer = applyLogicAtPosition(x,y,LINK_RANGE,board,playerLUT, function(x,y,r,board,playerLUT,result) {					
+				var nearestPlayer = applyLogicAroundPosition(x,y,LINK_RANGE, function(x,y,r,result) {					
 					if(x == p.x && y == p.y) // skip self
 						return result;
 					
-					var o = playerLUT[x][y];
+					var o = playerBoard[x][y];
 					
 					if(!result) // ignore empty cells
 						return o;
@@ -34,7 +36,7 @@ module.exports = {
 					checkForLink(board, p, nearestPlayer);
 				console.log('found this nearby player:' + nearestPlayer);
 			},
-			onLinkComplete: function(A,B,board,sockets) {
+			onLinkComplete: function(A,B) {
 				var ptsLoss = B.pts * ABILITY_4_PURPLE_POINTS_STEAL_RATIO;
 				B.pts -= ptsLoss;
 				A.pts += ptsLoss;
@@ -44,9 +46,9 @@ module.exports = {
 			name: '4 yellows',
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
 			recipe: [0,4,0,0,0,0],
-			onTeleportLanding: function(board,playerLUT,x,y,p) {
+			onTeleportLanding: function(x,y,p) {
 				var r = 
-				applyLogicAtPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS,board,playerLUT, function(x,y,r,board,playerLUT,result){
+				applyLogicAroundPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS, function(x,y,r,result){
 					if(board.isPowerUp[x][y] != PU_ID_NONE) {
 						var id = board.isPowerUp[x][y];
 						board.isPowerUp[x][y] = PU_ID_NONE;
@@ -57,8 +59,12 @@ module.exports = {
 		},
 		{
 			name: '4 blues',
-			description: 'After teleporting, you also clear blocks in a small radius for a short duration upond landing.',
-			recipe: [0,0,4,0,0,0]
+			description: 'After teleporting, you also clear blocks in a small radius for a short duration upon landing.',
+			recipe: [0,0,4,0,0,0],
+			onChangePosition: function(x,y,p) {
+				if(p.cooldown >= p.maxCooldown - ABILITY_4_BLUE_CLEARING_DURATION)
+					clearAroundPoint(x,y,ABILITY_4_BLUE_RADIUS_CLEAR);
+			}
 		},
 		{
 			name: '4 greens',
@@ -68,7 +74,15 @@ module.exports = {
 		{
 			name: '4 reds',
 			description: 'The next wall you hit will cause a large clearing effect and trigger your teleport cooldown.',
-			recipe: [0,0,0,0,4,0]
+			recipe: [0,0,0,0,4,0],
+			onPlayerWallHit: function(x,y,p) {
+				if(p.cooldown > 0)
+					return false; // kill player
+					
+				triggerCooldown(p);
+				clearAroundPoint(x,y,ABILITY_4_RED_RADIUS_CLEAR);
+				return true;
+			}
 		},
 		{
 			name: '4 oranges',
@@ -98,8 +112,9 @@ function checkForLink(board, playerA, playerB) {
 }
 
 // calls logic(x,y,r,board,previousResult) at each position, in a "fold left" fashion
-function applyLogicAtPosition(x,y,r,board,playerLUT,logic) {
+function applyLogicAroundPosition(x,y,r,logic) {
 	r = Math.round(r * 2);
+	r = r * r;
 	X0 = Math.max(x - r,1);
 	X1 = Math.min(x + r, board.W-2);
 	Y0 = Math.max(y - r,1);
@@ -107,8 +122,8 @@ function applyLogicAtPosition(x,y,r,board,playerLUT,logic) {
 	result = undefined;
 	for (var i=X0;i<=X1;i++) {
 		for (var j=Y0;j<=Y1;j++) {
-			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= r)
-				result = logic(i,j,r,board,playerLUT,result);
+			if((i-x)*(i-x)+(j-y)*(j-y) <= r)
+				result = logic(i,j,r,result);
 		}
 	}
 	return result;
