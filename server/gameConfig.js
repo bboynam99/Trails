@@ -14,7 +14,7 @@ global.LINK_SUSTAIN = 12; // link will stay alive at this range (hysteresis)
 global.TELE_CLEAR_RADIUS = 4; // upond landing; a circle of this radius will be cleared
 global.TELE_DISTANCE = 8; 
 global.TELE_COOLDOWN = 10;
-global.MAX_HEARTBEAT_KICK = 2000; // player will be killed after no input (ms);
+global.MAX_HEARTBEAT_KICK = 4000; // player will be killed after no input (ms);
 global.MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated before the player is kicked
 global.PU_SLOTS = 4; // the number of powerups a player can carry at once
 // Flags for the bloc board state
@@ -40,5 +40,8 @@ global.PU_TELE_RANGE = 4; // bonus teleport distance
 
 // abilities constants
 global.ABILITY_4_YELLOW_CLEAR_RADIUS = 8;
-global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.40; // the ratio of points stolen
+global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.20; // the ratio of points stolen
 global.ABILITY_4_ORANGE_KILL_RADIUS = 80; // the ratio of points stolen
+global.ABILITY_4_RED_RADIUS_CLEAR = 12; // the ratio of points stolen
+global.ABILITY_4_BLUE_CLEARING_DURATION = 3; // the number of seconds the clearing effect lasts
+global.ABILITY_4_BLUE_RADIUS_CLEAR = 3;

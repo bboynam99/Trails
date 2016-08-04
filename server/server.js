@@ -61,7 +61,7 @@ var sockets = {};
 io.on('connection', function (socket) {
 	console.log("A new player has connected: " + socket.id);
 	sockets[socket.id] = socket;
-		
+	
 	var spawnPosition = findGoodSpawn();
 	var player = {
 		id: socket.id,
@@ -205,7 +205,7 @@ io.on('connection', function (socket) {
 			teleportPlayer(player);
 		}
 	});
-});	
+});
 
 var serverPort = process.env.PORT || config.port;
 http.listen(serverPort, function() {
@@ -394,8 +394,10 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 				board.BlockTs[x0][y0] = now;
 				dilation(x0,y0,p,p.blocId);
 			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
-				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
-				break;
+				if(player.specialAbility && player.specialAbility.onPlayerWallHit)
+					if(!player.specialAbility.onPlayerWallHit(x,y,player))
+						hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
+				break; // weather he died or not, we still stop drawing the line (this could change in the future with new abilities)
 			}
 			x0 += dx;
 			y0 += dy;
@@ -427,6 +429,9 @@ function afterInterpolationMove(x,y,p) {
 
 	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
 	dilation(x,y,p,p.blocId * -1);
+	
+	if(p.specialAbility && p.specialAbility.onChangePosition)
+		p.specialAbility.onChangePosition(x,y,p);
 }
 
 function beforeConfirmedMove(x,y,p) {
@@ -545,7 +550,7 @@ function updateLinks(dt) {
 			l.dt += dt;
 			if(l.dt >= LINK_END) { // link conversion is complete!
 				if(A.specialAbility && A.specialAbility.onLinkComplete)
-					A.specialAbility.onLinkComplete(A,B,board,sockets);
+					A.specialAbility.onLinkComplete(A,B);
 				delete board.links[key];
 			}
 		}
@@ -605,23 +610,27 @@ function killPlayer(p, reason, message) {
 }
 
 function teleportPlayer(player) {
-	var x = player.x, y = player.y;
+	player.cooldown = player.maxCooldown;
 	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
+	clearAroundPoint(player.x,player.y,r);
+	
+	if(player.specialAbility && player.specialAbility.onTeleportLanding)
+		player.specialAbility.onTeleportLanding(x,y,player);
+}
+
+function clearAroundPoint(x,y,r) {
+	r = r * r;
 	X0 = Math.max(x - r,1);
 	X1 = Math.min(x + r, board.W-2);
 	Y0 = Math.max(y - r,1);
 	Y1 = Math.min(y + r, board.H-2);
 	for (var i=X0;i<=X1;i++) {
 		for (var j=Y0;j<=Y1;j++) {
-			if(Math.sqrt((i-x)*(i-x)+(j-y)*(j-y)) <= r)
+			if((i-x)*(i-x)+(j-y)*(j-y) <= r)
 				if(board.blockId[i][j] != B_BORDERS)
 					board.blockId[i][j] = B_EMPTY;
 		}
 	}
-	player.cooldown = player.maxCooldown;
-	
-	if(player.specialAbility && player.specialAbility.onTeleportLanding)
-		player.specialAbility.onTeleportLanding(board,playerBoard,x,y,player);
 }
 
 var now;
@@ -683,6 +692,12 @@ function checkSync() {
 				killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
 			}
 	});
+}
+
+// this function is called when a player sends data inconsistent with the server values. The server forces a resync with the client.
+function forceResync(p) {
+	sockets[p.id].emit('sync',px,py);
+	p.desyncCounter = 0;
 }
 
 function getUnusedColor() {

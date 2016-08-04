@@ -13,11 +13,12 @@ This is private repo for the next big online io game.
 
 - if desync is a problem, force resync on client (instead of kicking)**
 
+- space down: show teleport area (red X?), space up: teleport! (not 100% sure, needs testing)
+
 - wasad to move
 - phone support
 - also teleport seems to be glitched (cuases out of sync).
 - test with high lag
-- onscreen explanation of powerups (maybe tips on deaths?)
 
 - player limit
 - server crash message
