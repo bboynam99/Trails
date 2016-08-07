@@ -5,52 +5,13 @@ var io      = require('socket.io')(http);
 var config  = require('./config.json');
 require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
+var b = require('./board.js');
 var abilities = require('./abilities.js'); 
 abilities = abilities.abilities;
-
 //
 /** Game variables **/
 //
 var users = []; // players and their data
-var board = { // game board
-	H: 50,
-	W: 50,
-	blockId: null,
-	isPowerUp: null,
-	BlockTs: null,
-	numPowerUpsOnBoard: 0,
-	links: [],
-	colorsLUT: []
-};
-board.links = []; // link maps between players
-board.colorsLUT = [];
-
-// init board
-board.blockId = new Array(board.W);
-board.isPowerUp = new Array(board.W);
-board.BlockTs = new Array(board.W);
-for (var i=0;i<board.W;i++) {
-	board.blockId[i] = new Array(board.H);
-	board.isPowerUp[i] = new Array(board.H);
-	board.BlockTs[i] = new Array(board.H);
-	for (var j=0;j<board.H;j++) {
-		board.isPowerUp[i][j] = PU_ID_NONE;
-		board.blockId[i][j] = B_EMPTY;
-		board.BlockTs[i][j] = 0;
-		if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
-			board.blockId[i][j] = B_BORDERS;
-	}
-}
-
-var playerBoard = new Array(board.W); // allows to efficiently retrieve nearby players
-for (var i=0;i<board.W;i++) {
-	playerBoard[i] = new Array(board.H);
-	for (var j=0;j<board.H;j++) {
-		playerBoard[i][j] = null;
-	}
-}
-
-var blocIdLUT = {};
 var blocIdGenerator = 11;
 var leaderBoard = [];
 
@@ -394,9 +355,10 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 				board.BlockTs[x0][y0] = now;
 				dilation(x0,y0,p,p.blocId);
 			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
-				if(player.specialAbility && player.specialAbility.onPlayerWallHit)
-					if(!player.specialAbility.onPlayerWallHit(x,y,player))
-						hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
+				if(p.specialAbility && p.specialAbility.onPlayerWallHit)
+					if(p.specialAbility.onPlayerWallHit(x0,y0,p))
+						break;
+				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
 				break; // weather he died or not, we still stop drawing the line (this could change in the future with new abilities)
 			}
 			x0 += dx;
@@ -612,25 +574,10 @@ function killPlayer(p, reason, message) {
 function teleportPlayer(player) {
 	player.cooldown = player.maxCooldown;
 	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
-	clearAroundPoint(player.x,player.y,r);
+	b.clearAroundPoint(player.x,player.y,r);
 	
 	if(player.specialAbility && player.specialAbility.onTeleportLanding)
-		player.specialAbility.onTeleportLanding(x,y,player);
-}
-
-function clearAroundPoint(x,y,r) {
-	r = r * r;
-	X0 = Math.max(x - r,1);
-	X1 = Math.min(x + r, board.W-2);
-	Y0 = Math.max(y - r,1);
-	Y1 = Math.min(y + r, board.H-2);
-	for (var i=X0;i<=X1;i++) {
-		for (var j=Y0;j<=Y1;j++) {
-			if((i-x)*(i-x)+(j-y)*(j-y) <= r)
-				if(board.blockId[i][j] != B_BORDERS)
-					board.blockId[i][j] = B_EMPTY;
-		}
-	}
+		player.specialAbility.onTeleportLanding(player.x,player.y,player);
 }
 
 var now;
@@ -688,15 +635,17 @@ function checkSync() {
 	users.forEach( function(u) {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
-				console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
-				killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
+				//console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
+				//killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
+				forceResync(u);
+				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
 			}
 	});
 }
 
 // this function is called when a player sends data inconsistent with the server values. The server forces a resync with the client.
 function forceResync(p) {
-	sockets[p.id].emit('sync',px,py);
+	sockets[p.id].emit('sync',p.x,p.y);
 	p.desyncCounter = 0;
 }
 
