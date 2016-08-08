@@ -50,7 +50,7 @@ global.blocIdLUT = {};
 // A bunch of helper functions
 //
 
-function createLink(board, playerA, playerB) {
+function createLink(playerA, playerB) {
 	if(board.links) {
 		if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
 			console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);

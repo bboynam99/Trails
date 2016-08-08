@@ -14,11 +14,11 @@ module.exports = {
 			name: '4 purples',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
 			recipe: [4,0,0,0,0,0],
-			onTeleportLanding: function(board,playerLUT,x,y,p) {
+			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				
 				if(nearestPlayer) // create link if possible
-					b.createLink(board, p, nearestPlayer);
+					b.createLink(p, nearestPlayer);
 			},
 			onLinkComplete: function(A,B) {
 				var ptsLoss = B.pts * ABILITY_4_PURPLE_POINTS_STEAL_RATIO;
@@ -46,17 +46,17 @@ module.exports = {
 			recipe: [0,0,4,0,0,0],
 			onChangePosition: function(x,y,p) {
 				if(p.cooldown >= p.maxCooldown - ABILITY_4_BLUE_CLEARING_DURATION)
-					b.clearAroundPoint(board,x,y,ABILITY_4_BLUE_RADIUS_CLEAR);
+					b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,ABILITY_4_BLUE_RADIUS_CLEAR);
 			}
 		},
 		{
 			name: '4 greens',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal their color.',
 			recipe: [0,0,0,4,0,0],
-			onTeleportLanding: function(board,playerLUT,x,y,p) {
+			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				if(nearestPlayer) // create link if possible
-					b.createLink(board, p, nearestPlayer);
+					b.createLink(p, nearestPlayer);
 			},
 			onLinkComplete: function(A,B,board,sockets) {
 				A.hue = B.hue;
@@ -73,7 +73,7 @@ module.exports = {
 					return false; // kill player
 					
 				b.triggerCooldown(p);
-				b.clearAroundPoint(board,x,y,ABILITY_4_RED_RADIUS_CLEAR);
+				b.clearAroundPoint(x,y,ABILITY_4_RED_RADIUS_CLEAR);
 				return true;
 			}
 		},
@@ -81,7 +81,7 @@ module.exports = {
 			name: '4 oranges',
 			description: 'Your teleport clearing effect can now kill other players.',
 			recipe: [0,0,0,0,0,4],
-			onTeleportLanding: function(board,playerLUT,x,y,p) {
+			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,ABILITY_4_ORANGE_KILL_RADIUS,p);
 				if(nearestPlayer) // kill players! TODO: the line below does not work :( need to find a visibility solution.
 					hasCrashedInto(p, nearestPlayer, 'You were eliminated by ' + p.name + '\'s power up ability.');

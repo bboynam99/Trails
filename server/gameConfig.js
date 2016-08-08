@@ -33,8 +33,8 @@ global.MAX_POWERUP_ID = 6; // UPDATE THIS everytime a new power up is added
 
 global.PU_SPEED_MOD = 1.25; // bloc per second per PU
 global.PU_TELE_CD = 2.25; // bonus sec cd per PU
-global.PU_TELE_AOE = 3; // bonus radius per PU
-global.PU_PTS_LOSS_MOD = -2.3; // The point loss modifier when stepping on own track
+global.PU_TELE_AOE = 2; // bonus radius per PU
+global.PU_PTS_LOSS_MOD = -2.2; // The point loss modifier when stepping on own track
 global.PU_POINTS_MOD = 10; // bonus points per sec per PU
 global.PU_TELE_RANGE = 4; // bonus teleport distance
 
@@ -43,5 +43,5 @@ global.ABILITY_4_YELLOW_CLEAR_RADIUS = 8;
 global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.20; // the ratio of points stolen
 global.ABILITY_4_ORANGE_KILL_RADIUS = 80; // the ratio of points stolen
 global.ABILITY_4_RED_RADIUS_CLEAR = 12; // the ratio of points stolen
-global.ABILITY_4_BLUE_CLEARING_DURATION = 3; // the number of seconds the clearing effect lasts
-global.ABILITY_4_BLUE_RADIUS_CLEAR = 3;
+global.ABILITY_4_BLUE_CLEARING_DURATION = 4; // the number of seconds the clearing effect lasts
+global.ABILITY_4_BLUE_RADIUS_CLEAR = 2;
