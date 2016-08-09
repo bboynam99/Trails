@@ -134,10 +134,8 @@ Game.prototype.handleLogic = function() {
 				gameOver = true; // server will validate this anyways, but doing it on client aswell feels more responsive
 			}
 			var newC = board.blockId[player.lastPos[0]][player.lastPos[1]];
-			console.log('new square=' + newC + ' and player color = ' + player.hue);
 			if(player.hue != newC && newC != EMPTY_BLOCK) {
-				updatePosition();
-				//gameOver = true;
+				updatePosition(); // this will check with server for a game over.
 			}
 		}
 		board.blockId[player.lastPos[0]][player.lastPos[1]] = player.hue; // gives a smooth display
@@ -304,13 +302,13 @@ function updatePlayerDirection() {
 	player.x = Math.round(player.x);
 	player.y = Math.round(player.y);
 	
-	if (lastDirectionPressed == KEY_LEFT && player.dx == 0) {
+	if (lastDirectionPressed == KEY_LEFT[0] && player.dx == 0) {
 		changePlayerDirection(-1.0,0.0);
-	} else if (lastDirectionPressed == KEY_RIGHT && player.dx == 0) {
+	} else if (lastDirectionPressed == KEY_RIGHT[0] && player.dx == 0) {
 		changePlayerDirection(1.0,0.0);
-	} else if (lastDirectionPressed == KEY_DOWN && player.dy == 0) {
+	} else if (lastDirectionPressed == KEY_DOWN[0] && player.dy == 0) {
 		changePlayerDirection(0.0,1.0);
-	} else if (lastDirectionPressed == KEY_UP && player.dy == 0) {
+	} else if (lastDirectionPressed == KEY_UP[0] && player.dy == 0) {
 		changePlayerDirection(0.0,-1.0);
 	}
 	// if we had a delta, adjust according to the new direction
@@ -590,11 +588,11 @@ function getBlocDrawCoordinates(x,y,size){
 }
 
 /** Keyboard handling **/
-var KEY_LEFT = 37;
-var KEY_UP = 38;
-var KEY_RIGHT = 39;
-var KEY_DOWN = 40;
-var KEY_SPACE = 32;
+var KEY_LEFT = [37,65];
+var KEY_UP = [38,87];
+var KEY_RIGHT = [39,68];
+var KEY_DOWN = [40,83];
+var KEY_SPACE = [32];
 var NO_KEY = -1;
 
 var TAP_CENTER_REL_DIST = 0.05;
@@ -617,13 +615,13 @@ function bindClickTap(c) {
 		var key = null;
 		var deg = 180 * Math.atan2(rx, ry) / Math.PI;
 		if(deg < -135 || deg > 135)
-			key = KEY_DOWN;
+			key = KEY_DOWN[0];
 		else if(deg < -45)
-			key = KEY_LEFT;
+			key = KEY_LEFT[0];
 		else if(deg > 45)
-			key = KEY_RIGHT;
+			key = KEY_RIGHT[0];
 		else
-			key = KEY_UP;
+			key = KEY_UP[0];
 
 		applyKeyboardDirectionLogic(key);
 	}, false);
@@ -637,8 +635,14 @@ var lastDirectionPressed = NO_KEY;
 var comboDirectionPressed = NO_KEY;
 function directionDown(event) {
 	var key = event.which || event.keyCode;
-	if (key == KEY_LEFT || key == KEY_RIGHT || key == KEY_DOWN || key == KEY_UP) {
-		applyKeyboardDirectionLogic(key);
+	if (KEY_DOWN.includes(key)) {
+		applyKeyboardDirectionLogic(KEY_DOWN[0]);
+	} else if (KEY_LEFT.includes(key)) {
+		applyKeyboardDirectionLogic(KEY_LEFT[0]);
+	} else if (KEY_RIGHT.includes(key)) {
+		applyKeyboardDirectionLogic(KEY_RIGHT[0]);
+	} else if (KEY_UP.includes(key)) {
+		applyKeyboardDirectionLogic(KEY_UP[0]);
 	} else if(key == KEY_SPACE) {
 		if(gameOver)
 			socket.emit('respawnRequest', playerName);
