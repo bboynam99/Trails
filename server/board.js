@@ -9,8 +9,8 @@ module.exports = {
 }
 
 global.board = { // game board
-	H: 100,
-	W: 100,
+	H: 150,
+	W: 150,
 	blockId: null,
 	isPowerUp: null,
 	BlockTs: null,
