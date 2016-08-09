@@ -86,7 +86,6 @@ function applyLogicAroundPosition(x,y,r,logic) {
 }
 
 function findNearestPlayer(x,y,r,p){
-	console.log('find nearest player was called at position ('+x+','+y+') with r='+r+' for player=' + p.name);
 	var val = applyLogicAroundPosition(x,y,r, function(i,j,result) {				
 		if(i == x && j == y) // skip self
 			return result;
@@ -104,7 +103,6 @@ function findNearestPlayer(x,y,r,p){
 		else
 			return o;
 	});
-	console.log('found this nearest player: ' + val + ' with name: ' + val.name);
 	return val;
 }
 
