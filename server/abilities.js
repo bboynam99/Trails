@@ -32,9 +32,9 @@ module.exports = {
 			recipe: [0,4,0,0,0,0],
 			onTeleportLanding: function(x,y,p) {
 				b.applyLogicAroundPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS, function(x,y,result){
-					if(b.isPowerUp[x][y] != PU_ID_NONE) {
-						var id = b.isPowerUp[x][y];
-						b.isPowerUp[x][y] = PU_ID_NONE;
+					if(board.isPowerUp[x][y] != PU_ID_NONE) {
+						var id = board.isPowerUp[x][y];
+						board.isPowerUp[x][y] = PU_ID_NONE;
 						b.numPowerUpsOnBoard--;
 					}
 				});
