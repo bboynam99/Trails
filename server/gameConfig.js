@@ -35,8 +35,8 @@ global.PU_SPEED_MOD = 1.25; // bloc per second per PU
 global.PU_TELE_CD = 2.25; // bonus sec cd per PU
 global.PU_TELE_AOE = 2; // bonus radius per PU
 global.PU_PTS_LOSS_MOD = -2.4; // The point loss modifier when stepping on own track
-global.PU_POINTS_MOD = 10; // bonus points per sec per PU
-global.PU_TELE_RANGE = 4; // bonus teleport distance
+global.PU_POINTS_MOD = 5; // bonus points per sec per PU
+global.PU_TELE_RANGE = 3; // bonus teleport distance
 
 // abilities constants
 global.ABILITY_4_YELLOW_CLEAR_RADIUS = 8;
