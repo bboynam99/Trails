@@ -98,7 +98,7 @@ function findNearestPlayer(x,y,r,p){
 			return result;
 		
 		// keep nearest player
-		if(Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
+		if(o.isDead || Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
 			return result;
 		else
 			return o;

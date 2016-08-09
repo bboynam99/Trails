@@ -15,6 +15,7 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('playerSpawn', function (newPlayer, b) {
 		document.getElementById('powerups').innerHTML = ''; // clear powerup description
 		initBoard(b.boardW,b.boardH, b.LOS);
+		updateDrawingSizes();
 		player = newPlayer;
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
@@ -181,7 +182,8 @@ Game.prototype.handleGraphics = function(gfx) {
 	var cx = screenWidth / 2;
 	var cy = screenHeight / 2;
 	gfx.fillStyle = '#fbfcfc';
-	gfx.fillRect(cx - board.LOS, cy - board.LOS, 2*board.LOS, 2*board.LOS);
+	var los = board.LOS * BLOCK_TO_PIXELS;
+	gfx.fillRect(cx - los, cy - los, 2*los, 2*los);
 
 	// draw board
 	drawBoard(gfx);
@@ -242,7 +244,7 @@ function initBoard(H,W,LOS){
 	board.H = H;
 	board.blockId = new Array(W);
 	board.isPowerUp = new Array(W);
-	board.LOS = LOS * BLOCK_TO_PIXELS;
+	board.LOS = LOS;
 	for (var i=0;i<W;i++) {
 		board.blockId[i] = new Array(H);
 		board.isPowerUp[i] = new Array(H);
@@ -681,4 +683,25 @@ function updatePosition() {
 	if(player && !gameOver && socket)
 		socket.emit('mv', {x:player.x, y:player.y, dx:player.dx, dy:player.dy});
 }
+
+function updateDrawingSizes() {
+	BLOCK_TO_PIXELS = Math.round(Math.min(screenHeight/board.LOS,screenWidth/board.LOS)); // the size of a game bloc
+	HALF_BLOCK_SIZE_DISPLAY = Math.round(BLOCK_TO_PIXELS/2); // the left and right padding in px when drawing a bloc
+	POWERUP_RADIUS = Math.round(HALF_BLOCK_SIZE_DISPLAY/2);
+	POWERUP_STROKE = Math.round(POWERUP_RADIUS/3);
+}
+
+
+var doCheck = true;
+window.onresize = function(){
+	if(doCheck) {
+		doCheck = false;
+		setTimeout(function(){
+			doCheck = true;
+			updateDrawingSizes();
+		},200);
+	}
+};
+
+
 setInterval(updatePosition, 500);

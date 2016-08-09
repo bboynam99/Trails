@@ -10,22 +10,53 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-
-
-- RED: when you trigger it, it seems to transfer points somehow
-
-- fix screen scroll!!
-- test force resync
-- space down: show teleport area (red X?), space up: teleport! (not 100% sure, needs testing)
-
 - wasad to move
-- phone support
-- test with high lag
 
-- player limit
-- server crash message
-- broad cast restart countdown with custom message
+
+*** new features
+- space down: show teleport area (red X?), space up: teleport! (not 100% sure, needs testing)
+- player limit (queue system)
 - reconnect support
+- add fun combos (teleport modifiers)
+- phone support
+
+*** needs testing:
+- RED: when you trigger it, it seems to transfer points somehow
+- test force resync
+
+*** known bugs:
+
+
+*** admin commands (new feature)
+- broad cast restart countdown with custom message
 - crash logs
 
-- add fun combos (teleport modifiers)
+
+
+
+purple-red
+purple-green
+purple-yellow
+purple-blue
+purple-orange
+red-green
+red-yellow
+red-blue
+red-orange
+green-yellow
+green-blue
+green-orange
+yellow-blue
+yellow-orange
+blue-orange
+
+
+Replaces teleport. Trigger a slow channel on a nearby player. The player dies when complete.
+Repalces teleport. Trigger a channel on a nearby player. If complete, you will swap position with the other player.
+Steal all of another player's power ups.
+on teleport, spawn a brick wall behind you.
+replaces teleport. Spawn a circle shape wall around you.
+Kamikazee: quickly smash yourself into a wall, killing anyone in your path. You will not survive.
+Your next teleport will clear the entire map, consuming your precious powerups in the process.
+Replaces teleport. Drops a landmind that explode when a player comes near. 
+
