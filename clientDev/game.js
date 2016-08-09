@@ -30,6 +30,9 @@ Game.prototype.handleNetwork = function(socket) {
 		player.lpr = cts.lpr;
 	});
 	
+	socket.on('trCd', function (cd) {
+		player.cooldown = cd;
+	});
 	
 	socket.on('updateBoard', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
@@ -102,7 +105,6 @@ Game.prototype.handleNetwork = function(socket) {
 	});
 	
 	socket.on('eliminatedPlayer', function () {
-		console.log('eliminate player.');
 		var lastFewBlocks = [];
 		var lastFewBlocksId = 0; 
 	});

@@ -3,7 +3,9 @@ module.exports = {
 	applyLogicAroundPosition,
 	findNearestPlayer,
 	clearAroundPoint,
-	triggerCooldown
+	triggerCooldown,
+	hasCrashedInto,
+	killPlayer
 }
 
 global.board = { // game board
@@ -52,12 +54,14 @@ global.blocIdLUT = {};
 
 function createLink(playerA, playerB) {
 	if(board.links) {
-		if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
-			console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
-			board.links[playerA] = {
-				fromP: playerA,
-				toP: playerB,
-				dt: 0
+		if(playerA & playerB) {
+			if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
+				console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
+				board.links[playerA] = {
+					fromP: playerA,
+					toP: playerB,
+					dt: 0
+				}
 			}
 		}
 	}
@@ -71,26 +75,27 @@ function applyLogicAroundPosition(x,y,r,logic) {
 	Y0 = Math.max(y - r,1);
 	Y1 = Math.min(y + r, board.H-2);
 	r = r * r;
-	result = undefined;
+	result = null;
 	for (var i=X0;i<=X1;i++) {
 		for (var j=Y0;j<=Y1;j++) {
 			if((i-x)*(i-x)+(j-y)*(j-y) <= r)
-				result = logic(i,j,r,result);
+				result = logic(i,j,result);
 		}
 	}
 	return result;
 }
 
 function findNearestPlayer(x,y,r,p){
-	return applyLogicAroundPosition(x,y,r,board, function(x,y,result) {					
-		if(x == p.x && y == p.y) // skip self
+	console.log('find nearest player was called at position ('+x+','+y+') with r='+r+' for player=' + p.name);
+	var val = applyLogicAroundPosition(x,y,r, function(i,j,result) {				
+		if(i == x && j == y) // skip self
 			return result;
 		
-		var o = playerBoard[x][y];
+		var o = playerBoard[i][j];
 		
-		if(!result) // ignore empty cells
+		if(result == null) // ignore empty cells
 			return o;
-		if(!o)
+		if(o == null)
 			return result;
 		
 		// keep nearest player
@@ -99,6 +104,8 @@ function findNearestPlayer(x,y,r,p){
 		else
 			return o;
 	});
+	console.log('found this nearest player: ' + val + ' with name: ' + val.name);
+	return val;
 }
 
 function clearAroundPoint(x,y,r) {
@@ -109,6 +116,52 @@ function clearAroundPoint(x,y,r) {
 		return undefined;
 	});
 }
-function triggerCooldown(p) {
+function triggerCooldown(p) { // TODO: add math.max(current,max)
 	p.cooldown = p.maxCooldown;
+}
+
+function hasCrashedInto(crashee, crasher, customMsg) {
+	crashee.pts += crasher.pts;
+	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
+		for (var j=1;j<board.H-1;j++) {
+			if(Math.abs(board.blockId[i][j]) == crashee.blocId) {
+				board.blockId[i][j] = B_EMPTY;
+			}
+		}
+	}
+	if(!customMsg)
+		customMsg = 'You were eliminated by ' + crashee.name + '.';
+	killPlayer(crasher, ' was eliminated by ' + crashee.name, customMsg);
+	sockets[crashee.id].emit('eliminatedPlayer');
+}
+
+function killPlayer(p, reason, message) {
+	try {
+		console.log('Killing player ' + p.name + ' because: ' + reason)
+		p.isDead = true;
+		p.pts = 0;
+		p.cooldown = TELE_COOLDOWN;
+		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
+		p.bonusSizeCache = 0;
+		
+		for (var i=0;i<PU_SLOTS;i++)
+			p.slots[i] = PU_ID_NONE;
+		for (var i=0;i<MAX_POWERUP_ID;i++)
+			p.slotAggregation[i]=0;
+		p.lastSlotFilled = 0;
+		
+		sockets[p.id].emit('playerDied', message);
+		if(Math.round(p.x) >= 0 && Math.round(p.y) >= 0 && Math.round(p.x) < board.W && Math.round(p.y) < board.H)
+			playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
+		p.desyncCounter = 0;
+		for (var i=1;i<board.W-1;i++) {
+			for (var j=1;j<board.H-1;j++) {
+				if(Math.abs(board.blockId[i][j]) == p.blocId) {
+					board.blockId[i][j] = B_EMPTY;
+				}
+			}
+		}
+	} catch(err) {
+		console.log('error while killing player: ' + err);
+	}
 }

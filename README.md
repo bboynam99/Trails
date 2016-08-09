@@ -11,13 +11,15 @@ This is private repo for the next big online io game.
 ## TODO list:
 
 
-- if desync is a problem, force resync on client (instead of kicking)**
 
+- RED: when you trigger it, it seems to transfer points somehow
+
+- fix screen scroll!!
+- test force resync
 - space down: show teleport area (red X?), space up: teleport! (not 100% sure, needs testing)
 
 - wasad to move
 - phone support
-- also teleport seems to be glitched (cuases out of sync).
 - test with high lag
 
 - player limit
@@ -27,4 +29,3 @@ This is private repo for the next big online io game.
 - crash logs
 
 - add fun combos (teleport modifiers)
-- on turn, wipe out all phantoms in a 3x3 neiborhood (maybe not necessary)

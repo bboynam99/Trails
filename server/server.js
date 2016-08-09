@@ -18,7 +18,7 @@ var leaderBoard = [];
 //
 /** Socket communication (game events) **/
 //
-var sockets = {};
+global.sockets = {};
 io.on('connection', function (socket) {
 	console.log("A new player has connected: " + socket.id);
 	sockets[socket.id] = socket;
@@ -64,7 +64,7 @@ io.on('connection', function (socket) {
 
 	socket.on('myNameIs', function (name) {
 		if(!name || !validNick(name)){
-			killPlayer(player, 'invalid name', 'Your name was invalid.'); 
+			b.killPlayer(player, 'invalid name', 'Your name was invalid.'); 
 			socket.disconnect();
 		}
 			
@@ -116,7 +116,7 @@ io.on('connection', function (socket) {
 			player.y = newInfo.y;
 						
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
-				killPlayer(player, 'player is outside the playable area.','You crashed into a border.'); 
+				b.killPlayer(player, 'player is outside the playable area.','You crashed into a border.'); 
 			} else if(nx != x || ny != y) { // if position has changed 
 				playerBoard[x][y] = null; // update player position LUT
 				playerBoard[nx][ny] = player;
@@ -129,7 +129,7 @@ io.on('connection', function (socket) {
 	});
 
 	socket.on('disconnect', function () {
-		killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
+		b.killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
 		delete sockets[player.id];
 		delete board.colorsLUT[player.blocId];
 		var index = users.indexOf(player);
@@ -154,10 +154,10 @@ io.on('connection', function (socket) {
     });
 	socket.on('powerupUsed', function(x,y) {
 		if(player.cooldown > 1)
-			killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
+			b.killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) > 4){ // a small lag grace
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) + ', which is greater than ' + 4);
-			killPlayer(player, 'teleported way too far.', 'You were out of sync with the server :(');
+			b.killPlayer(player, 'teleported way too far.', 'You were out of sync with the server :(');
 		} else {
 			player.x = x;
 			player.y = y;
@@ -358,7 +358,7 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 				if(p.specialAbility && p.specialAbility.onPlayerWallHit)
 					if(p.specialAbility.onPlayerWallHit(x0,y0,p))
 						break;
-				hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
+				b.hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
 				break; // weather he died or not, we still stop drawing the line (this could change in the future with new abilities)
 			}
 			x0 += dx;
@@ -408,7 +408,7 @@ function beforeConfirmedMove(x,y,p) {
 		//console.log('++');
 	}
 	if(p.pts <= 0)
-		killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
+		b.killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
 	// update velocity based on points
 	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + p.slotAggregation[PU_ID_SPEED-1] * PU_SPEED_MOD; // at 10k pts, speed = 7
 }
@@ -524,52 +524,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function hasCrashedInto(crashee, crasher, customMsg) {
-	crashee.pts += crasher.pts;
-	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
-		for (var j=1;j<board.H-1;j++) {
-			if(Math.abs(board.blockId[i][j]) == crashee.blocId) {
-				board.blockId[i][j] = B_EMPTY;
-			}
-		}
-	}
-	if(!customMsg)
-		customMsg = 'You were eliminated by ' + crashee.name + '.';
-	killPlayer(crasher, 'has crashed into the trail of player ' + crashee.name, customMsg);
-	sockets[crashee.id].emit('eliminatedPlayer');
-}
 
-function killPlayer(p, reason, message) {
-	try {
-		console.log('Killing player ' + p.name + ' because: "' + reason)
-		xpDropCounter = 0;
-		p.isDead = true;
-		p.pts = 0;
-		p.cooldown = TELE_COOLDOWN;
-		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
-		p.bonusSizeCache = 0;
-		
-		for (var i=0;i<PU_SLOTS;i++)
-			p.slots[i] = PU_ID_NONE;
-		for (var i=0;i<MAX_POWERUP_ID;i++)
-			p.slotAggregation[i]=0;
-		p.lastSlotFilled = 0;
-		
-		sockets[p.id].emit('playerDied', message);
-		if(Math.round(p.x) >= 0 && Math.round(p.y) >= 0 && Math.round(p.x) < board.W && Math.round(p.y) < board.H)
-			playerBoard[Math.round(p.x)][Math.round(p.y)] = null;
-		p.desyncCounter = 0;
-		for (var i=1;i<board.W-1;i++) {
-			for (var j=1;j<board.H-1;j++) {
-				if(Math.abs(board.blockId[i][j]) == p.blocId) {
-					board.blockId[i][j] = B_EMPTY;
-				}
-			}
-		}
-	} catch(err) {
-		console.log('error while killing player: ' + err);
-	}
-}
 
 function teleportPlayer(player) {
 	player.cooldown = player.maxCooldown;
@@ -588,7 +543,7 @@ function checkHeartBeat() {
 		users.forEach( function(u) {
 			if(!u.isDead)
 				if(now - u.lastHeartbeat >= MAX_HEARTBEAT_KICK)
-					killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK, 'You lagged out :(');
+					b.killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK, 'You lagged out :(');
 		});
 }
 
@@ -636,7 +591,7 @@ function checkSync() {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
 				//console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
-				//killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
+				//b.killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
 				forceResync(u);
 				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
 			}
