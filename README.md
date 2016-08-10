@@ -10,13 +10,10 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-- wasad to move
 
 
 *** new features
-- space down: show teleport area (red X?), space up: teleport! (not 100% sure, needs testing)
 - player limit (queue system)
-- reconnect support
 - add fun combos (teleport modifiers)
 - phone support
 
@@ -25,7 +22,6 @@ This is private repo for the next big online io game.
 - test force resync
 
 *** known bugs:
-
 
 *** admin commands (new feature)
 - broad cast restart countdown with custom message

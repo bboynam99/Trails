@@ -135,6 +135,7 @@ function hasCrashedInto(crashee, crasher, customMsg) {
 
 function killPlayer(p, reason, message) {
 	try {
+		leaderboard.addScore(p.name,p.pts);
 		console.log('Killing player ' + p.name + ' because: ' + reason)
 		p.isDead = true;
 		p.pts = 0;

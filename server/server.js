@@ -7,13 +7,13 @@ require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
 var b = require('./board.js');
 var abilities = require('./abilities.js'); 
+global.leaderboard = require('./score.js'); 
 abilities = abilities.abilities;
 //
 /** Game variables **/
 //
 var users = []; // players and their data
 var blocIdGenerator = 11;
-var leaderBoard = [];
 
 //
 /** Socket communication (game events) **/
@@ -474,7 +474,15 @@ function spawnPowerUps() {
 }
 
 function updateLeaderboard() {
-	var sortedUsers = users.filter(function(a){return !a.isDead})
+	var scores = leaderboard.getScores();
+	scores = scores.map(function(obj){ // we don't want to send out timestamp
+		return {
+			name: obj.name,
+			score: Math.round(obj.score)
+		};
+	})
+	
+	/*var sortedUsers = users.filter(function(a){return !a.isDead})
 		.sort(function(a, b){return b.pts-a.pts});
 	
 	leaderBoard = [];
@@ -484,11 +492,11 @@ function updateLeaderboard() {
 			name: sortedUsers[i].name,
 			score: Math.round(sortedUsers[i].pts)
 		});
-	}
+	}*/
 	
 	users.forEach( function(u) {
 		if(!u.isDead)
-			sockets[u.id].emit('updateLeaderBoard', leaderBoard);
+			sockets[u.id].emit('updateLeaderBoard', scores);
 	});
 }
 
@@ -627,7 +635,7 @@ function getUnusedColor() {
 setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);
-setInterval(updateLeaderboard, 2000);
+setInterval(updateLeaderboard, 10000);
 setInterval(checkHeartBeat, 2000);
 setInterval(checkSync, 500); // security function
 setInterval(cleanPhantomTrails, 3000);
