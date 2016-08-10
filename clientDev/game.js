@@ -22,6 +22,7 @@ Game.prototype.handleNetwork = function(socket) {
 		player.lpr = newPlayer.lpr;
 		gameOver = false;
 		tick();
+		socket.emit('myNameIs', playerName);
 	});
 	
 	socket.on('newVals', function (cts) {
@@ -216,6 +217,21 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.beginPath();
 		gfx.moveTo(bx,by);
 		gfx.lineTo(ex,ey);
+		gfx.stroke();
+	}
+	
+	// draw teleport target
+	if(spaceDown) {
+		var tx = player.x + player.dx * player.teleportDist;
+		var ty = player.y + player.dy * player.teleportDist;
+		var coords = boardToScreen(tx,ty,true);
+		gfx.strokeStyle = '#f00';
+		gfx.lineWidth = 4;
+		gfx.beginPath(); // draw "X"
+			gfx.moveTo(coords[0]-HALF_BLOCK_SIZE_DISPLAY,coords[1]-HALF_BLOCK_SIZE_DISPLAY);
+			gfx.lineTo(coords[0]+HALF_BLOCK_SIZE_DISPLAY,coords[1]+HALF_BLOCK_SIZE_DISPLAY);
+			gfx.moveTo(coords[0]+HALF_BLOCK_SIZE_DISPLAY,coords[1]-HALF_BLOCK_SIZE_DISPLAY);
+			gfx.lineTo(coords[0]-HALF_BLOCK_SIZE_DISPLAY,coords[1]+HALF_BLOCK_SIZE_DISPLAY);
 		gfx.stroke();
 	}
 }
@@ -543,7 +559,7 @@ function useAbility() {
 		if((player.dx != 0 && tx > 1 && tx < board.W-2) || (player.dy != 0 && ty > 1 && ty < board.H-2)) {
 			player.x = tx;
 			player.y = ty;
-			socket.emit('powerupUsed',tx, ty);
+			socket.emit('powerupUsed',tx, ty, player.dx, player.dy);
 			// TODO: draw a big red circle (explosion) on land
 			triggerCooldown(player);
 			clearFutureTurns(); // this is necessary, otherwise player goes nuts
@@ -629,8 +645,10 @@ function bindClickTap(c) {
 	}, false);
 }
 
+var spaceDown = false;
 function bindKeyboard(c) {
 	c.addEventListener('keydown', directionDown, false);
+	c.addEventListener('keyup', directionUp, false);
 }
 
 var lastDirectionPressed = NO_KEY;
@@ -646,6 +664,14 @@ function directionDown(event) {
 	} else if (KEY_UP.includes(key)) {
 		applyKeyboardDirectionLogic(KEY_UP[0]);
 	} else if(key == KEY_SPACE) {
+		spaceDown = true;
+	}
+}
+
+function directionUp(event) {
+	var key = event.which || event.keyCode;
+	if(key == KEY_SPACE) {
+		spaceDown = false;
 		if(gameOver)
 			socket.emit('respawnRequest', playerName);
 		else if(!gameOver)
