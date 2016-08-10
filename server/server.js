@@ -9,6 +9,7 @@ var b = require('./board.js');
 var abilities = require('./abilities.js'); 
 global.leaderboard = require('./score.js'); 
 abilities = abilities.abilities;
+var spawningQueue = require('./spawningQueue.js'); 
 //
 /** Game variables **/
 //
@@ -18,6 +19,7 @@ var blocIdGenerator = 11;
 //
 /** Socket communication (game events) **/
 //
+//build socket event
 global.sockets = {};
 io.on('connection', function (socket) {
 	console.log("A new player has connected: " + socket.id);
@@ -26,7 +28,7 @@ io.on('connection', function (socket) {
 	var spawnPosition = findGoodSpawn();
 	var player = {
 		id: socket.id,
-		isDead: false,
+		isDead: true,
 		x: spawnPosition[0],
 		y: spawnPosition[1],
 		lastX: spawnPosition[0],
@@ -72,30 +74,8 @@ io.on('connection', function (socket) {
 	});	
 	
 	// emit [player, board]
-	function emitRespawn() {
-		player.hue = getUnusedColor(); // player is no longer part of any other hue groups!
-		board.colorsLUT[player.blocId] = player.hue;
-		player.isDead = false;
-		socket.emit('playerSpawn',{ // the player
-			x: player.x,
-			y: player.y,
-			dx:player.dx,
-			dy:player.dy,
-			velocity:player.velocity,
-			hue: player.hue,
-			cooldown: player.cooldown,
-			pts: player.pts,
-			dpts: player.dpts,
-			lpr: player.lpr,
-			maxCooldown: TELE_COOLDOWN,
-			teleportDist: TELE_DISTANCE
-		}, { // the board
-			boardW:board.W,
-			boardH:board.H,
-			LOS:PLAYER_LOS_RANGE
-		});
-	}
-	emitRespawn();
+	
+	spawningQueue.queuePlayer(player);
 
 		
 	socket.on('mv', function (newInfo) {
@@ -167,6 +147,33 @@ io.on('connection', function (socket) {
 			teleportPlayer(player);
 		}
 	});
+});
+//set spawning logic
+spawningQueue.setSpawnLogic(function(p) {
+	p.hue = getUnusedColor(); // player is no longer part of any other hue groups!
+	board.colorsLUT[p.blocId] = p.hue;
+	p.isDead = false;
+	sockets[p.id].emit('playerSpawn',{ // the player data
+		x: p.x,
+		y: p.y,
+		dx:p.dx,
+		dy:p.dy,
+		velocity:p.velocity,
+		hue: p.hue,
+		cooldown: p.cooldown,
+		pts: p.pts,
+		dpts: p.dpts,
+		lpr: p.lpr,
+		maxCooldown: TELE_COOLDOWN,
+		teleportDist: TELE_DISTANCE
+	}, { // the board
+		boardW:board.W,
+		boardH:board.H,
+		LOS:PLAYER_LOS_RANGE
+	});
+});
+spawningQueue.setCountPlayersOnboard(function() {
+	return users.filter(function(u) {return !u.isDead && sockets[u.id].connected}).length;
 });
 
 var serverPort = process.env.PORT || config.port;

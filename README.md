@@ -18,7 +18,8 @@ This is private repo for the next big online io game.
 - phone support
 
 *** needs testing:
-- RED: when you trigger it, it seems to transfer points somehow
+- REDx4: when you trigger it, it seems to transfer points somehow
+- test abilities.
 - test force resync
 
 *** known bugs:

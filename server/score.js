@@ -1,5 +1,10 @@
 // handles score board (with persistency)
 
+module.exports = {
+	getScores,
+	addScore
+}
+
 var jsonfile = require('jsonfile')
 var leaderboard = [];
 var MAX_LENGTH = 10;
@@ -39,9 +44,4 @@ function addScore(name, score) {
 			console.error('Failed to serizalize/save leaderboard: ' + err);
 		})
 	}
-}
-
-module.exports = {
-	getScores,
-	addScore
 }
