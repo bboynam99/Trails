@@ -152,8 +152,9 @@ io.on('connection', function (socket) {
 			emitRespawn();
 		}
     });
-	socket.on('powerupUsed', function(x,y) {
-		if(player.cooldown > 1)
+	socket.on('powerupUsed', function(x,y,dx,dy) {
+		player.dx = dx; player.dy = dy;
+		if(player.cooldown > 1 || player.dx == player.dy)
 			b.killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
 		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) > 4){ // a small lag grace
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) + ', which is greater than ' + 4);
