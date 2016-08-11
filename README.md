@@ -13,7 +13,6 @@ This is private repo for the next big online io game.
 
 
 *** new features
-- player limit (queue system)
 - add fun combos (teleport modifiers)
 - phone support
 

@@ -72,7 +72,7 @@ module.exports = {
 				if(p.cooldown > 0)
 					return false; // kill player
 					
-				b.triggerCooldown(p);
+				b.triggerCooldown(p,ABILITY_4_RED_CD);
 				b.clearAroundPoint(x,y,ABILITY_4_RED_RADIUS_CLEAR);
 				sockets[p.id].emit('trCd', ABILITY_4_RED_CD);
 	

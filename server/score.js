@@ -33,7 +33,7 @@ function addScore(name, score) {
 			score:score,
 			ts:Date.now()
 		});
-		leaderboard.sort(function(a, b){return b.pts-a.pts});
+		leaderboard.sort(function(a, b){return b.score-a.score});
 		var now = Date.now();
 		leaderboard = leaderboard.filter(function(val){return (now - val.ts) <= PERSISTENCE});
 		

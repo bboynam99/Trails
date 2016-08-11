@@ -13,6 +13,7 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	// this is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, b) {
+		queue = 0, queueMax = 0;
 		document.getElementById('powerups').innerHTML = ''; // clear powerup description
 		initBoard(b.boardW,b.boardH, b.LOS);
 		updateDrawingSizes();
@@ -36,7 +37,7 @@ Game.prototype.handleNetwork = function(socket) {
 		player.cooldown = cd;
 	});
 	
-	socket.on('updateBoard', function (newBoard) {
+	socket.on('upBr', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
 				board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
@@ -50,7 +51,7 @@ Game.prototype.handleNetwork = function(socket) {
 		colors = newBoard.colors;
 	});
 	
-	socket.on('updatePlayers', function (updatedPlayers, newLinks, selfUpdate) {
+	socket.on('upPl', function (updatedPlayers, newLinks, selfUpdate) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
 			p.lastDeltaPts = p.dpts; // this will be used later
@@ -116,9 +117,15 @@ Game.prototype.handleNetwork = function(socket) {
 		player.y = y;
 		updatePosition(); // update with server
 	});
+	
+	socket.on('queue', function (q,qm) {
+		queue = q;
+		queueMax = qm;
+	});
 }
 
 Game.prototype.handleLogic = function() {
+	
 	if (!player || gameOver) // the game hasn't initialized yet!
 		return;
 		
@@ -153,12 +160,27 @@ Game.prototype.handleLogic = function() {
 	player.cooldown = Math.max(0, player.cooldown - dt);
 }
 
-Game.prototype.handleGraphics = function(gfx) {
+Game.prototype.handleGraphics = function(gfx) {	
+	// this is where everything is drawn
+	if(queue > 0){
+		gfx.fillStyle = '#fbfcfc';
+		gfx.fillRect(0, 0, screenWidth, screenHeight);
+		gfx.fillStyle = '#2ecc71';
+		gfx.strokeStyle = '#27ae60';
+		gfx.font = 'bold 50px Verdana';
+		gfx.textAlign = 'center';
+		gfx.lineWidth = 2;
+		gfx.fillText('Server is full :(', screenWidth * 0.5, screenHeight * 0.4);
+		gfx.strokeText('Server is full :(', screenWidth * 0.5, screenHeight * 0.4);
+		gfx.font = '24px Verdana';
+		gfx.fillText('Position in queue: ' + queue + ' of ' + queueMax + '.' , screenWidth * 0.5, screenHeight * 0.4 + 50);
+		gfx.strokeText('Position in queue: ' + queue + ' of ' + queueMax + '.', screenWidth * 0.5, screenHeight * 0.4 + 50);
+		return;
+	}
+	
 	if (!player) // the game hasn't initialize yet!
 		return;
-	
-	// this is where everything is drawn
-	
+		
 	if(gameOver) {
 		gfx.fillStyle = '#fbfcfc';
 		gfx.fillRect(0, 0, screenWidth, screenHeight);
@@ -271,6 +293,7 @@ function initBoard(H,W,LOS){
 	}
 }
 var gameOver = false;
+var queue = 0, queueMax = 0;
 var deathMessage = '';
 
 //
@@ -559,7 +582,7 @@ function useAbility() {
 		if((player.dx != 0 && tx > 1 && tx < board.W-2) || (player.dy != 0 && ty > 1 && ty < board.H-2)) {
 			player.x = tx;
 			player.y = ty;
-			socket.emit('powerupUsed',tx, ty, player.dx, player.dy);
+			socket.emit('teleport',tx, ty, player.dx, player.dy);
 			// TODO: draw a big red circle (explosion) on land
 			triggerCooldown(player);
 			clearFutureTurns(); // this is necessary, otherwise player goes nuts
@@ -572,7 +595,7 @@ function triggerCooldown(player) {
 }
 
 function displayLeaderBoard(leaderboard) {
-	var status = '<h1>Leaderboard</h1>';
+	var status = '<h1>Recent High Scores</h1>';
 	i = 1;
 	if(leaderboard)
 		leaderboard.forEach( function(l) {
@@ -730,4 +753,4 @@ window.onresize = function(){
 };
 
 
-setInterval(updatePosition, 500);
+setInterval(updatePosition, 200);

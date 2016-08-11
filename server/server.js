@@ -44,7 +44,7 @@ io.on('connection', function (socket) {
 		lpr: DEFAULT_LOSING_POINTS_RATIO, // dpts/dt ratio factor when you're negative (stepping on own track)
 		bonusSizeCache: 0, //use to cache the bonus size (so it is not recomputed constantly)
 		hue: getUnusedColor(),
-		lastHeartbeat: new Date().getTime(),
+		lastHeartbeat: 0,
 		name: '',
 		blocId: blocIdGenerator,
 		desyncCounter: 0, // the cumulated delta between client and server
@@ -69,11 +69,8 @@ io.on('connection', function (socket) {
 			b.killPlayer(player, 'invalid name', 'Your name was invalid.'); 
 			socket.disconnect();
 		}
-			
-		player['name'] = name;
+		player.name = name;
 	});	
-	
-	// emit [player, board]
 	
 	spawningQueue.queuePlayer(player);
 
@@ -91,7 +88,7 @@ io.on('connection', function (socket) {
 			
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newInfo.x), ny = Math.round(newInfo.y);
-			player.lastHeartbeat = new Date().getTime(); // see function checkHeartBeat
+			player.lastHeartbeat = Date.now(); // see function checkHeartBeat
 			player.x = newInfo.x;
 			player.y = newInfo.y;
 						
@@ -129,10 +126,10 @@ io.on('connection', function (socket) {
 			player.dx = spawnPosition[2];
 			player.dy = spawnPosition[3];
 			player.velocity = INITIAL_VELOCITY;
-			emitRespawn();
+			spawningQueue.queuePlayer(player);
 		}
     });
-	socket.on('powerupUsed', function(x,y,dx,dy) {
+	socket.on('teleport', function(x,y,dx,dy) {
 		player.dx = dx; player.dy = dy;
 		if(player.cooldown > 1 || player.dx == player.dy)
 			b.killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
@@ -153,6 +150,7 @@ spawningQueue.setSpawnLogic(function(p) {
 	p.hue = getUnusedColor(); // player is no longer part of any other hue groups!
 	board.colorsLUT[p.blocId] = p.hue;
 	p.isDead = false;
+	p.lastHeartbeat = Date.now();
 	sockets[p.id].emit('playerSpawn',{ // the player data
 		x: p.x,
 		y: p.y,
@@ -257,7 +255,7 @@ function sendUpdatesBoard() {
 				}
 				newBoard.colors = Object.keys(colors);
 
-				sockets[u.id].emit('updateBoard', newBoard);
+				sockets[u.id].emit('upBr', newBoard);
 			}
 		}
 	});
@@ -311,7 +309,7 @@ function sendUpdatesPlayers() {
 				slots: u.slots
 			};
 							
-			sockets[u.id].emit('updatePlayers', otherPlayers, newLinks, selfPlayer);
+			sockets[u.id].emit('upPl', otherPlayers, newLinks, selfPlayer);
 		}
 	});
 }
@@ -645,5 +643,5 @@ setInterval(sendUpdatesPlayers, 1000 / 15);
 setInterval(updateLeaderboard, 10000);
 setInterval(checkHeartBeat, 2000);
 setInterval(checkSync, 500); // security function
-setInterval(cleanPhantomTrails, 3000);
+setInterval(cleanPhantomTrails, 1000);
 

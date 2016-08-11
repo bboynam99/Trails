@@ -7,7 +7,7 @@ module.exports = {
 }
 
 
-var MAX_PLAYERS = 1;
+var MAX_PLAYERS = 40;
 var queue = [];
 var spawnlogic;
 var countPlayersOnboard;
@@ -27,19 +27,23 @@ function setCountPlayersOnboard(logic){
 
 function queuePlayer(player) {	
 	var playerCount = countPlayersOnboard();
-	if(playerCount < MAX_PLAYERS)
+	
+	if(playerCount < MAX_PLAYERS && queue.length == 0)
 		spawnlogic(player);
-	else
+	else if(queue.indexOf(player) == -1){
 		queue.unshift(player);
+	}
+	console.log(queue.length);
 }
 
 function spawn(player) { // periodic check
 	if (!validate()) return;
 
 	var playerCount = countPlayersOnboard();
-	while(playerCount <= MAX_PLAYERS && queue.length > 0) {
+
+	while(playerCount < MAX_PLAYERS && queue.length > 0) {
 		var p = queue.pop();
-		if(sockets[p.id] && sockets[p.id].connected){
+		if(sockets[p.id]){
 			spawnlogic(p);
 			playerCount++;
 		}
@@ -49,9 +53,17 @@ function spawn(player) { // periodic check
 function sendQueueUpdates(){ // periodic updates
 	if (!validate()) return;
 	
+	//clean up queue (disconects)
+	for(i=queue.length-1;i>=0;i--) {
+		if(!sockets[queue[i].id]) {
+			queue.splice(i, 1);
+		}
+	}
+	pos = queue.length;
+	// send updates to remaining players
 	queue.forEach(function(p){
-		//emit queue update
+		sockets[p.id].emit('queue',pos--,queue.length);
 	});
 }
-setInterval(spawn, 1000);
-setInterval(sendQueueUpdates, 500);
+setInterval(spawn, 2000);
+setInterval(sendQueueUpdates, 1000);

@@ -114,8 +114,11 @@ function clearAroundPoint(x,y,r) {
 		return undefined;
 	});
 }
-function triggerCooldown(p) { // TODO: add math.max(current,max)
-	p.cooldown = p.maxCooldown;
+function triggerCooldown(p,cd) {
+	if(cd)
+		p.cooldown = Math.max(p.cooldown,cd);
+	else
+		p.cooldown = Math.max(p.cooldown,p.maxCooldown);
 }
 
 function hasCrashedInto(crashee, crasher, customMsg) {
