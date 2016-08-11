@@ -56,4 +56,19 @@ replaces teleport. Spawn a circle shape wall around you.
 Kamikazee: quickly smash yourself into a wall, killing anyone in your path. You will not survive.
 Your next teleport will clear the entire map, consuming your precious powerups in the process.
 Replaces teleport. Drops a landmind that explode when a player comes near. 
+black hole pulls everyone towards points
+captcha another player (so mean)
+musical chair: everyone needs to grab a black one.
 
+- investigate cooldown (not up)
+- orange ALWAYS clears everything
+- red: cd diff on client and server
+
+
+
+red: faster
+orange: far jump
+yellow: own train
+green: more pts
+clear: blue
+short cd: purple
