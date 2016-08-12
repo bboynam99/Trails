@@ -1,5 +1,4 @@
 module.exports = {
-	createLink,
 	applyLogicAroundPosition,
 	findNearestPlayer,
 	clearAroundPoint,
@@ -9,16 +8,14 @@ module.exports = {
 }
 
 global.board = { // game board
-	H: 150,
-	W: 150,
+	H: BOARD_H,
+	W: BOARD_W,
 	blockId: null,
 	isPowerUp: null,
 	BlockTs: null,
 	numPowerUpsOnBoard: 0,
-	links: [],
 	colorsLUT: []
 };
-board.links = []; // link maps between players
 board.colorsLUT = [];
 
 // init board
@@ -51,21 +48,6 @@ global.blocIdLUT = {};
 //
 // A bunch of helper functions
 //
-
-function createLink(playerA, playerB) {
-	if(board.links) {
-		if(playerA & playerB) {
-			if(!(playerA in board.links) && !(playerB in board.links)) { // players don't already have a link
-				console.log('New link channeling between ' + playerA.name + ' and ' + playerB.name);
-				board.links[playerA] = {
-					fromP: playerA,
-					toP: playerB,
-					dt: 0
-				}
-			}
-		}
-	}
-}
 
 // calls logic(x,y,r,board,previousResult) at each position, in a "fold left" fashion
 function applyLogicAroundPosition(x,y,r,logic) {

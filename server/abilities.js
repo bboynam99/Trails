@@ -6,14 +6,13 @@
 // onPlayerWallHit(x,y,p) // returns true if player lives, false if he dies
 // onChangePosition(x,y,p)
 var b = require('./board.js');
-require('./server.js');
 
 module.exports = {
   abilities: [
 		{
-			name: '4 purples',
+			name: '4 reds',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
-			recipe: [4,0,0,0,0,0],
+			recipe: [0,0,0,0,4,0],
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				
@@ -27,9 +26,9 @@ module.exports = {
 			}
 		},
 		{
-			name: '4 yellows',
+			name: '4 purples',
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
-			recipe: [0,4,0,0,0,0],
+			recipe: [4,0,0,0,0,0],
 			onTeleportLanding: function(x,y,p) {
 				b.applyLogicAroundPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS, function(x,y,result){
 					if(board.isPowerUp[x][y] != PU_ID_NONE) {
@@ -50,9 +49,9 @@ module.exports = {
 			}
 		},
 		{
-			name: '4 greens',
+			name: '4 yellows',
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal their color.',
-			recipe: [0,0,0,4,0,0],
+			recipe: [0,4,0,0,0,0],
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				if(nearestPlayer != null) // create link if possible
@@ -65,9 +64,9 @@ module.exports = {
 			}
 		},
 		{
-			name: '4 reds',
+			name: '4 greens',
 			description: 'When your teleport is ready, the next wall you hit will cause a large clearing effect and trigger a short cooldown.',
-			recipe: [0,0,0,0,4,0],
+			recipe: [0,0,0,4,0,0],
 			onPlayerWallHit: function(x,y,p) {
 				if(p.cooldown > 0)
 					return false; // kill player

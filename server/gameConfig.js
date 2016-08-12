@@ -1,8 +1,11 @@
 //
 /** Game Constants **/
 //
+global.BOARD_W = 50;
+global.BOARD_H = 50;
+global.PLAYER_LOS_RANGE = 25;
 global.SPAWN_SPACE_NEEDED = 10;
-global.INITIAL_VELOCITY = 7.0;
+global.INITIAL_VELOCITY = 4.0;
 global.DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 global.DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
 global.NUM_POWERUPS_ONBOARD = 80;
@@ -23,11 +26,11 @@ global.B_BORDERS = 10;
 global.B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 // PowerUp flags
 global.PU_ID_NONE = 0;
-global.PU_ID_SPEED = 1;
-global.PU_ID_TELECD = 2;
+global.PU_ID_TELECD = 1;
+global.PU_ID_PTSLOSS = 2;
 global.PU_ID_TELEAOE = 3;
-global.PU_ID_PTSLOSS = 4;
-global.PU_ID_POINTS = 5;
+global.PU_ID_POINTS = 4;
+global.PU_ID_SPEED = 5;
 global.PU_ID_TELERANGE = 6;
 global.MAX_POWERUP_ID = 6; // UPDATE THIS everytime a new power up is added
 

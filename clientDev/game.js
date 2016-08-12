@@ -51,7 +51,7 @@ Game.prototype.handleNetwork = function(socket) {
 		colors = newBoard.colors;
 	});
 	
-	socket.on('upPl', function (updatedPlayers, newLinks, selfUpdate) {
+	socket.on('upPl', function (updatedPlayers, selfUpdate) {
 		// We keep some local values (x,y) because they're more reliable than server values (because of lag)
 		updatedPlayers.forEach( function(p) {
 			p.lastDeltaPts = p.dpts; // this will be used later
@@ -75,7 +75,6 @@ Game.prototype.handleNetwork = function(socket) {
 				}
 		});
 		otherPlayers = updatedPlayers;
-		links = newLinks;
 		if(Math.abs(player.pts - selfUpdate.pts) > selfUpdate.dpts) {
 			player.pts = selfUpdate.pts; // avoid jitter
 		}
@@ -218,7 +217,7 @@ Game.prototype.handleGraphics = function(gfx) {
 			drawPlayer(gfx, o);
 		});
 	// drawLinks
-	drawLinks(gfx);
+	//drawLinks(gfx);
 	
 	//draw cooldown marker
 	if(player.cooldown > 0) {

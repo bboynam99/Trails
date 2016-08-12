@@ -7,13 +7,13 @@ require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
 var b = require('./board.js');
 var abilities = require('./abilities.js'); 
-global.leaderboard = require('./score.js'); 
+require('./score.js'); 
 abilities = abilities.abilities;
 var spawningQueue = require('./spawningQueue.js'); 
 //
 /** Game variables **/
 //
-var users = []; // players and their data
+global.users = []; // players and their data
 var blocIdGenerator = 11;
 
 //
@@ -195,7 +195,7 @@ function gameloop() {
 	
 	moveloop(dt); // interpolate player position
 	spawnPowerUps();
-	updateLinks(dt);
+	//updateLinks(dt); // TODO: update all objects!
 	// update cooldowns, scores and velocity
 	users.forEach( function(u) {
 		try{
@@ -212,7 +212,6 @@ function gameloop() {
 
 var EMPTY_BLOCK = -1;
 var SIDE_WALL = -2; // client side constants
-var PLAYER_LOS_RANGE = 25;
 function sendUpdatesBoard() {
 	users.forEach( function(u) {
 		if (!u.isDead) {
@@ -271,11 +270,11 @@ function sendUpdatesPlayers() {
 			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H-1);
 
 			var otherPlayers = [];
-			var newLinks = [];
-			var l = board.links[u];
-			if(l && l.dt >= LINK_START) {
+			//var newLinks = [];
+			//var l = board.links[u];
+			/*if(l && l.dt >= LINK_START) {
 				newLinks.push(toClientLink(l));
-			}
+			}*/
 			
 			for (var i=0;i<=losX1-losX0;i++) {
 				for (var j=0;j<=losY1-losY0;j++) {
@@ -294,10 +293,10 @@ function sendUpdatesPlayers() {
 								dpts: o.dpts,
 								slots: o.slots
 							});
-							l = board.links[otherPlayers];
+							/*l = board.links[otherPlayers];
 							if(l && l.dt >= LINK_START) {
 								newLinks.push(toClientLink(l));
-							}
+							}*/
 						}
 					}
 				}
@@ -309,7 +308,7 @@ function sendUpdatesPlayers() {
 				slots: u.slots
 			};
 							
-			sockets[u.id].emit('upPl', otherPlayers, newLinks, selfPlayer);
+			sockets[u.id].emit('upPl', otherPlayers, selfPlayer);
 		}
 	});
 }
@@ -478,33 +477,6 @@ function spawnPowerUps() {
 	}
 }
 
-function updateLeaderboard() {
-	var scores = leaderboard.getScores();
-	scores = scores.map(function(obj){ // we don't want to send out timestamp
-		return {
-			name: obj.name,
-			score: Math.round(obj.score)
-		};
-	})
-	
-	/*var sortedUsers = users.filter(function(a){return !a.isDead})
-		.sort(function(a, b){return b.pts-a.pts});
-	
-	leaderBoard = [];
-	for (var i=0; i<Math.min(sortedUsers.length,10); i++)
-	{
-		leaderBoard.push({
-			name: sortedUsers[i].name,
-			score: Math.round(sortedUsers[i].pts)
-		});
-	}*/
-	
-	users.forEach( function(u) {
-		if(!u.isDead)
-			sockets[u.id].emit('updateLeaderBoard', scores);
-	});
-}
-
 function cleanPhantomTrails() {
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
@@ -515,30 +487,9 @@ function cleanPhantomTrails() {
 	}
 }
 
-function updateLinks(dt) {
-	for (var key in board.links) {
-		var l = board.links[key];
-		var A = l.fromP, B = l.toP;
-		var dist = (Math.abs(A.x - B.x) + Math.abs(A.y - B.y));
-		if(A.isDead || B.isDead || dist > LINK_SUSTAIN ) {
-			delete board.links[key]; // link broken!
-		} else {
-			l.dt += dt;
-			if(l.dt >= LINK_END) { // link conversion is complete!
-				if(A.specialAbility && A.specialAbility.onLinkComplete)
-					A.specialAbility.onLinkComplete(A,B);
-				delete board.links[key];
-			}
-		}
-	};
-}
-
-
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-
 
 function teleportPlayer(player) {
 	player.cooldown = player.maxCooldown;
@@ -560,7 +511,6 @@ function checkHeartBeat() {
 					b.killPlayer(u, 'no hearthbeat received for more than ' + MAX_HEARTBEAT_KICK, 'You lagged out :(');
 		});
 }
-
 
 function pickupPowerUp(player, powerUpType) {
 	player.slots[player.lastSlotFilled] = powerUpType;
@@ -640,7 +590,6 @@ function getUnusedColor() {
 setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 15);
 setInterval(sendUpdatesPlayers, 1000 / 15);
-setInterval(updateLeaderboard, 10000);
 setInterval(checkHeartBeat, 2000);
 setInterval(checkSync, 500); // security function
 setInterval(cleanPhantomTrails, 1000);
