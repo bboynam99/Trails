@@ -20,7 +20,6 @@ Game.prototype.handleNetwork = function(socket) {
 		player = newPlayer;
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
-		player.lpr = newPlayer.lpr;
 		gameOver = false;
 		tick();
 		socket.emit('myNameIs', playerName);
@@ -58,7 +57,7 @@ Game.prototype.handleNetwork = function(socket) {
 			if(otherPlayers)
 				for ( var i=0; i < otherPlayers.length; i++ ) {
 					var o = otherPlayers[i];
-					if (o.name === p.name && o.hue === p.hue) { // if it's the same dude?
+					if (o.id === p.id) { // if it's the same dude?
 						if(o.dx == p.dx && o.dy == p.dy) { // if the direction hasn't changed
 							if(Math.abs(o.x - p.x) + Math.abs(o.y - p.y) < (Math.abs(o.dx) + Math.abs(o.dy)) * o.velocity * 0.1) {
 								// keep the old values if the delta is small (to avoid jitter)
@@ -121,6 +120,12 @@ Game.prototype.handleNetwork = function(socket) {
 		queue = q;
 		queueMax = qm;
 	});
+	
+	socket.on('newO', function (o) {
+		o.dt = 0;
+		gameObjects.push(o);
+	});
+	
 }
 
 Game.prototype.handleLogic = function() {
@@ -157,6 +162,8 @@ Game.prototype.handleLogic = function() {
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
+	// update game objects
+	updateGameObjects(dt);
 }
 
 Game.prototype.handleGraphics = function(gfx) {	
@@ -216,8 +223,8 @@ Game.prototype.handleGraphics = function(gfx) {
 		otherPlayers.forEach( function(o) {
 			drawPlayer(gfx, o);
 		});
-	// drawLinks
-	//drawLinks(gfx);
+	// draw game objects
+	drawGameObjects(gfx);
 	
 	//draw cooldown marker
 	if(player.cooldown > 0) {
@@ -270,7 +277,7 @@ var board = {
 	LOS: 0
 };
 var colors = []; // contains all colors to be drawn, received from server.
-var links = [];
+var gameObjects = [];
 var lastFewBlocks = []; //client will always trust itself for board state of these pts
 var lastFewBlocksId = 0; var FEW_BLOCKS_LENGTH = 10;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
@@ -533,44 +540,67 @@ function drawBoard(gfx){
 		sX += BLOCK_TO_PIXELS;
 	}
 }
+function updateGameObjects(dt) {
+	for(var i=gameObjects.length-1;i>=0;i--){
+		var l = gameObjects[i];
+		switch(l.type){
+			case 1: // Link
+				l.dt += dt;
+				if(l.dt >= l.exp)
+					gameObjects.splice(i, 1);
+				break;
+		}
+	}
+}
 
-function drawLinks(gfx) {
-	if(links)
-		links.forEach( function(l) {
-			// compute line coords
-			var s = boardToScreen(l.x0,l.y0,true);
-			var x1 = l.x0 + (l.x1 - l.x0) *(1.6 * l.progress),
-				y1 = l.y0 + (l.y1 - l.y0) * (1.6 * l.progress);
-			var e = boardToScreen(x1,y1,true);
-			
-			var pts = new Array(22);
-			var w = 0.0;
-			for(var i=0; i<=20; i+=2) {
-				pts[i] = s[0] + (e[0] - s[0]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
-				pts[i+1] = s[1] + (e[1] - s[1]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
-				w += 0.05;
-			}
-			
-			// draw outer line
-			gfx.strokeStyle = LINK_SCOLOR;
-			gfx.lineWidth = LINK_OUTER;
-			gfx.beginPath();
-			gfx.moveTo(pts[0],pts[1]);
-			for(var i=2; i<pts.length; i+=2) {
-				gfx.lineTo(pts[i],pts[i+1]);
-			}
-			gfx.stroke();
-			
-			// draw inner line
-			gfx.strokeStyle = LINK_COLOR;
-			gfx.lineWidth = LINK_INNER;
-			gfx.beginPath();
-			gfx.moveTo(pts[0],pts[1]);
-			for(var i=2; i<pts.length; i+=2) {
-				gfx.lineTo(pts[i],pts[i+1]);
-			}
-			gfx.stroke();
-		});
+function drawGameObjects(gfx) {
+	gameObjects.forEach(function (l) {
+		//console.log('searching for type of ' + l.type + ' num obj=' + gameObjects.length);
+		switch(l.type){
+			case 1: // Link
+				//console.log('found type! its a link!');
+				var A = getPlayerFromId(l.fromP);
+				var B = getPlayerFromId(l.toP);
+				if(!A || !B) // can't draw this link!
+					break;
+				// compute line coords
+				var progress = l.dt / l.exp;
+				var s = boardToScreen(A.x,A.y,true);
+				var x1 = A.x + (B.x - A.x) *(1.6 * progress),
+					y1 = A.y + (B.y - A.y) *(1.6 * progress);
+				var e = boardToScreen(x1,y1,true);
+				
+				var pts = new Array(22);
+				var w = 0.0;
+				for(var i=0; i<=20; i+=2) {
+					pts[i] = s[0] + (e[0] - s[0]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+					pts[i+1] = s[1] + (e[1] - s[1]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
+					w += 0.05;
+				}
+				
+				// draw outer line
+				gfx.strokeStyle = LINK_SCOLOR;
+				gfx.lineWidth = LINK_OUTER;
+				gfx.beginPath();
+				gfx.moveTo(pts[0],pts[1]);
+				for(var i=2; i<pts.length; i+=2) {
+					gfx.lineTo(pts[i],pts[i+1]);
+				}
+				gfx.stroke();
+				
+				// draw inner line
+				gfx.strokeStyle = LINK_COLOR;
+				gfx.lineWidth = LINK_INNER;
+				gfx.beginPath();
+				gfx.moveTo(pts[0],pts[1]);
+				for(var i=2; i<pts.length; i+=2) {
+					gfx.lineTo(pts[i],pts[i+1]);
+				}
+				gfx.stroke();
+				break;
+		}
+		
+	});
 }
 
 function useAbility() {
@@ -739,6 +769,15 @@ function updateDrawingSizes() {
 	POWERUP_STROKE = Math.round(POWERUP_RADIUS/3);
 }
 
+function getPlayerFromId(id) {
+	if (player.id == id)
+		return player;
+		
+	var i = otherPlayers.findIndex(function(p){return p.id == id});
+	if(i > -1)
+		return otherPlayers[i];
+	return null;
+}
 
 var doCheck = true;
 window.onresize = function(){

@@ -6,6 +6,7 @@
 // onPlayerWallHit(x,y,p) // returns true if player lives, false if he dies
 // onChangePosition(x,y,p)
 var b = require('./board.js');
+var objects = require('./gameObject.js');
 
 module.exports = {
   abilities: [
@@ -17,10 +18,10 @@ module.exports = {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				
 				if(nearestPlayer != null)  // create link if possible
-					b.createLink(p, nearestPlayer);
+					objects.createLink(p, nearestPlayer, 1.0, 12, 1);
 			},
 			onLinkComplete: function(A,B) {
-				var ptsLoss = B.pts * ABILITY_4_PURPLE_POINTS_STEAL_RATIO;
+				var ptsLoss = B.pts * ABILITY_4_RED_POINTS_STEAL_RATIO;
 				B.pts -= ptsLoss;
 				A.pts += ptsLoss;
 			}
@@ -30,7 +31,7 @@ module.exports = {
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
 			recipe: [4,0,0,0,0,0],
 			onTeleportLanding: function(x,y,p) {
-				b.applyLogicAroundPosition(x,y,ABILITY_4_YELLOW_CLEAR_RADIUS, function(x,y,result){
+				b.applyLogicAroundPosition(x,y,ABILITY_4_PURPLE_CLEAR_RADIUS, function(x,y,result){
 					if(board.isPowerUp[x][y] != PU_ID_NONE) {
 						var id = board.isPowerUp[x][y];
 						board.isPowerUp[x][y] = PU_ID_NONE;
@@ -55,7 +56,7 @@ module.exports = {
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
 				if(nearestPlayer != null) // create link if possible
-					b.createLink(p, nearestPlayer);
+					objects.createLink(p, nearestPlayer, 0.75, 12, 1);
 			},
 			onLinkComplete: function(A,B) {
 				A.hue = B.hue;

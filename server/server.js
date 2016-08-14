@@ -7,7 +7,6 @@ require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
 var b = require('./board.js');
 var abilities = require('./abilities.js'); 
-require('./score.js'); 
 abilities = abilities.abilities;
 var spawningQueue = require('./spawningQueue.js'); 
 //
@@ -152,6 +151,7 @@ spawningQueue.setSpawnLogic(function(p) {
 	p.isDead = false;
 	p.lastHeartbeat = Date.now();
 	sockets[p.id].emit('playerSpawn',{ // the player data
+		id: p.blocId,
 		x: p.x,
 		y: p.y,
 		dx:p.dx,
@@ -282,6 +282,7 @@ function sendUpdatesPlayers() {
 						o = playerBoard[i+losX0][j+losY0];
 						if(!o.isDead && o.id != u.id) {
 							otherPlayers.push({
+								id: o.blocId,
 								x: o.x,
 								y: o.y,
 								dx:o.dx,

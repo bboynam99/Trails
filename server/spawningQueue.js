@@ -33,7 +33,6 @@ function queuePlayer(player) {
 	else if(queue.indexOf(player) == -1){
 		queue.unshift(player);
 	}
-	console.log(queue.length);
 }
 
 function spawn(player) { // periodic check

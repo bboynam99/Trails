@@ -1,3 +1,5 @@
+leaderboard = require('./score.js');
+
 module.exports = {
 	applyLogicAroundPosition,
 	findNearestPlayer,
@@ -69,10 +71,10 @@ function applyLogicAroundPosition(x,y,r,logic) {
 
 function findNearestPlayer(x,y,r,p){
 	var val = applyLogicAroundPosition(x,y,r, function(i,j,result) {				
-		if(i == x && j == y) // skip self
-			return result;
-		
 		var o = playerBoard[i][j];
+		
+		if(o != null && (o.isDead || o.id == p.id)) // ignore self and dead players
+			return result;
 		
 		if(result == null) // ignore empty cells
 			return o;
@@ -80,7 +82,7 @@ function findNearestPlayer(x,y,r,p){
 			return result;
 		
 		// keep nearest player
-		if(o.isDead || Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
+		if(Math.abs(result.x - x) + Math.abs(result.y - x) < Math.abs(o.x - x) + Math.abs(o.y - x)) 
 			return result;
 		else
 			return o;

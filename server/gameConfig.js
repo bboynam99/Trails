@@ -5,10 +5,10 @@ global.BOARD_W = 50;
 global.BOARD_H = 50;
 global.PLAYER_LOS_RANGE = 25;
 global.SPAWN_SPACE_NEEDED = 10;
-global.INITIAL_VELOCITY = 4.0;
+global.INITIAL_VELOCITY = 10.0;
 global.DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 global.DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
-global.NUM_POWERUPS_ONBOARD = 80;
+global.NUM_POWERUPS_ONBOARD = 40;
 global.WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
 global.LINK_START = 0.01; // link will show after this (ms)
 global.LINK_END = 0.75; // link will end after this
@@ -42,10 +42,10 @@ global.PU_POINTS_MOD = 5; // bonus points per sec per PU
 global.PU_TELE_RANGE = 3; // bonus teleport distance
 
 // abilities constants
-global.ABILITY_4_YELLOW_CLEAR_RADIUS = 8;
-global.ABILITY_4_PURPLE_POINTS_STEAL_RATIO = 0.50; // the ratio of points stolen
+global.ABILITY_4_PURPLE_CLEAR_RADIUS = 8;
+global.ABILITY_4_RED_POINTS_STEAL_RATIO = 0.50; // the ratio of points stolen
 global.ABILITY_4_ORANGE_KILL_RADIUS = 5; // the ratio of points stolen
-global.ABILITY_4_RED_RADIUS_CLEAR = 6; // the ratio of points stolen
-global.ABILITY_4_RED_CD = 2; // the cooldown triggered
+global.ABILITY_4_GREEN_RADIUS_CLEAR = 6; // the ratio of points stolen
+global.ABILITY_4_GREEN_CD = 2; // the cooldown triggered
 global.ABILITY_4_BLUE_CLEARING_DURATION = 6; // the number of seconds the clearing effect lasts
 global.ABILITY_4_BLUE_RADIUS_CLEAR = 2;
