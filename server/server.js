@@ -321,7 +321,7 @@ function toClientLink(serverLink) {
 		x1: serverLink.toP.x,
 		y1: serverLink.toP.y,
 		progress: (serverLink.dt - LINK_START) / (LINK_END - LINK_START)
-	}
+	};
 }
 
 
