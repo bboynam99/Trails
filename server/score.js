@@ -1,7 +1,7 @@
 // handles score board (with persistency)
 
 module.exports = {
-	getScores,
+	updateLeaderboard,
 	addScore
 }
 
@@ -15,19 +15,15 @@ jsonfile.readFile(file, function(err, obj) {
 		leaderboard = obj;
 });
 
-function getHighestScore() {	
+function getLowestScore() {	
 	if (leaderboard.length == 0)
 		return 0;
 	else
-		return leaderboard[0].score;
-}
-
-function getScores() {
-	return leaderboard;
+		return leaderboard[leaderboard.length-1].score;
 }
 
 function addScore(name, score) {
-	if (score > getHighestScore()) {
+	if (leaderboard.length < MAX_LENGTH || score > getLowestScore()) {
 		leaderboard.push({
 			name:name,
 			score:score,
@@ -45,3 +41,24 @@ function addScore(name, score) {
 		})
 	}
 }
+
+function updateLeaderboard(player) {
+	var scores = leaderboard.map(function(obj){ // we don't want to send out timestamp
+		return {
+			name: obj.name,
+			score: Math.round(obj.score)
+		};
+	})
+	
+	if(!player) {
+		users.forEach( function(u) {
+			if(!u.isDead)
+				sockets[u.id].emit('updateLeaderBoard', scores);
+		});
+	} else {
+		sockets[player.id].emit('updateLeaderBoard', scores);
+	}
+}
+
+setInterval(updateLeaderboard, 10000);
+	

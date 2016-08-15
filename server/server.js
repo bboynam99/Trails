@@ -9,6 +9,8 @@ var b = require('./board.js');
 var abilities = require('./abilities.js'); 
 abilities = abilities.abilities;
 var spawningQueue = require('./spawningQueue.js'); 
+global.score = require('./score.js');
+
 //
 /** Game variables **/
 //
@@ -116,7 +118,7 @@ io.on('connection', function (socket) {
     });
 	
 	socket.on('respawnRequest', function () {
-		if(player.isDead){
+		if(player.isDead) {
 			var spawnPosition = findGoodSpawn();
 			player.x = spawnPosition[0];
 			player.y = spawnPosition[1];
@@ -126,6 +128,7 @@ io.on('connection', function (socket) {
 			player.dy = spawnPosition[3];
 			player.velocity = INITIAL_VELOCITY;
 			spawningQueue.queuePlayer(player);
+			score.updateLeaderboard(player);
 		}
     });
 	socket.on('teleport', function(x,y,dx,dy) {
