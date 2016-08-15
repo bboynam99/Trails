@@ -47,5 +47,5 @@ global.ABILITY_4_RED_POINTS_STEAL_RATIO = 0.50; // the ratio of points stolen
 global.ABILITY_4_ORANGE_KILL_RADIUS = 5; // the ratio of points stolen
 global.ABILITY_4_GREEN_RADIUS_CLEAR = 6; // the ratio of points stolen
 global.ABILITY_4_GREEN_CD = 2; // the cooldown triggered
-global.ABILITY_4_BLUE_CLEARING_DURATION = 6; // the number of seconds the clearing effect lasts
+global.ABILITY_4_BLUE_CLEARING_DURATION = 3.5; // the number of seconds the clearing effect lasts
 global.ABILITY_4_BLUE_RADIUS_CLEAR = 2;
