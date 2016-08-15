@@ -12,7 +12,6 @@ global.NUM_POWERUPS_ONBOARD = 40;
 global.WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
 global.LINK_START = 0.01; // link will show after this (ms)
 global.LINK_END = 0.75; // link will end after this
-global.LINK_RANGE = 10; // link will start at this distance
 global.LINK_SUSTAIN = 12; // link will stay alive at this range (hysteresis)
 global.TELE_CLEAR_RADIUS = 4; // upond landing; a circle of this radius will be cleared
 global.TELE_DISTANCE = 8; 

@@ -15,10 +15,10 @@ module.exports = {
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
 			recipe: [0,0,0,0,4,0],
 			onTeleportLanding: function(x,y,p) {
-				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
+				var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 				
 				if(nearestPlayer != null)  // create link if possible
-					objects.createLink(p, nearestPlayer, 1.0, 12, 1);
+					objects.createLink(p, nearestPlayer, 1.5, 10, 2);
 			},
 			onLinkComplete: function(A,B) {
 				var ptsLoss = B.pts * ABILITY_4_RED_POINTS_STEAL_RATIO;
@@ -54,9 +54,9 @@ module.exports = {
 			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal their color.',
 			recipe: [0,4,0,0,0,0],
 			onTeleportLanding: function(x,y,p) {
-				var nearestPlayer = b.findNearestPlayer(x,y,LINK_RANGE,p);
+				var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 				if(nearestPlayer != null) // create link if possible
-					objects.createLink(p, nearestPlayer, 0.75, 12, 1);
+					objects.createLink(p, nearestPlayer, 1.00, 12, 1);
 			},
 			onLinkComplete: function(A,B) {
 				A.hue = B.hue;
@@ -72,9 +72,9 @@ module.exports = {
 				if(p.cooldown > 0)
 					return false; // kill player
 					
-				b.triggerCooldown(p,ABILITY_4_RED_CD);
-				b.clearAroundPoint(x,y,ABILITY_4_RED_RADIUS_CLEAR);
-				sockets[p.id].emit('trCd', ABILITY_4_RED_CD);
+				b.triggerCooldown(p,ABILITY_4_GREEN_CD);
+				b.clearAroundPoint(x,y,ABILITY_4_GREEN_RADIUS_CLEAR);
+				sockets[p.id].emit('trCd', ABILITY_4_GREEN_CD);
 	
 				return true;
 			}
@@ -84,9 +84,13 @@ module.exports = {
 			description: 'Your teleport clearing effect can now kill other players.',
 			recipe: [0,0,0,0,0,4],
 			onTeleportLanding: function(x,y,p) {
-				var nearestPlayer = b.findNearestPlayer(x,y,ABILITY_4_ORANGE_KILL_RADIUS,p);
-				if(nearestPlayer != null) // kill player!
-					b.hasCrashedInto(p, nearestPlayer, 'You were eliminated by ' + p.name + '\'s power up ability.');
+				var nearestPlayer = b.findNearestPlayer(x,y,8,p);
+				
+				if(nearestPlayer != null)  // create link if possible
+					objects.createLink(p, nearestPlayer, 2.5, 9, 3);
+			},
+			onLinkComplete: function(A,B) {
+				b.hasCrashedInto(A, B, 'You were eliminated by ' + p.name + '\'s power up ability.');
 			}
 		}
 	]

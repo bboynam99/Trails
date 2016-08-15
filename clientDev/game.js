@@ -21,8 +21,19 @@ Game.prototype.handleNetwork = function(socket) {
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
 		gameOver = false;
+		gameObjects = []; // clear all objects
 		tick();
 		socket.emit('myNameIs', playerName);
+		// THIS IS FOR TESTING ONLY:
+		/*gameObjects.push({
+			type: 1,
+			fromP: player.id,
+			toP: player.id,
+			exp: 5,
+			dt: 0,
+			skin: 3
+		});*/
+
 	});
 	
 	socket.on('newVals', function (cts) {
@@ -124,8 +135,7 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('newO', function (o) {
 		o.dt = 0;
 		gameObjects.push(o);
-	});
-	
+	});	
 }
 
 Game.prototype.handleLogic = function() {
@@ -312,7 +322,7 @@ var LINK_COLOR = '#99ccff';
 var LINK_SCOLOR = '#00264d';
 var LINK_INNER = 7;
 var LINK_OUTER = 15;
-var LINK_JITTER = 5; // adds a jitter effect (in px)
+var LINK_JITTER = 20; // adds a jitter effect (in px)
 var POWERUP_RADIUS = 10;
 var POWERUP_STROKE = 3;
 var POWERUPSCOLOR = ['#660066','#ffcc00','#003399','#339933','#cc0000', '#ff5733'];
@@ -557,50 +567,161 @@ function drawGameObjects(gfx) {
 	gameObjects.forEach(function (l) {
 		//console.log('searching for type of ' + l.type + ' num obj=' + gameObjects.length);
 		switch(l.type){
-			case 1: // Link
+			case 1: // LINK
 				//console.log('found type! its a link!');
 				var A = getPlayerFromId(l.fromP);
 				var B = getPlayerFromId(l.toP);
 				if(!A || !B) // can't draw this link!
 					break;
-				// compute line coords
 				var progress = l.dt / l.exp;
-				var s = boardToScreen(A.x,A.y,true);
-				var x1 = A.x + (B.x - A.x) *(1.6 * progress),
-					y1 = A.y + (B.y - A.y) *(1.6 * progress);
-				var e = boardToScreen(x1,y1,true);
 				
-				var pts = new Array(22);
-				var w = 0.0;
-				for(var i=0; i<=20; i+=2) {
-					pts[i] = s[0] + (e[0] - s[0]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
-					pts[i+1] = s[1] + (e[1] - s[1]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER);
-					w += 0.05;
+				switch(l.skin){
+					case 1: // electric arc with fading color
+						// compute line coords
+						var progress = l.dt / l.exp;
+						var s = boardToScreen(A.x,A.y,true);
+						var x1 = A.x + (B.x - A.x) * progress,
+							y1 = A.y + (B.y - A.y) * progress;
+						var e = boardToScreen(x1,y1,true);
+						//var s = [0,0], e = [screenWidth * progress,screenHeight * progress];
+						
+						var pts = new Array(22);
+						var w = 0.0;
+						var step = 1/(pts.length/2);
+						for(var i=0; i<pts.length; i+=2) {
+							pts[i] = s[0] + (e[0] - s[0]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER) * (((pts.length/2)-Math.abs(i - pts.length/2))/pts.length);
+							pts[i+1] = s[1] + (e[1] - s[1]) * w + getRandomInt(-1 * LINK_JITTER, LINK_JITTER) * (((pts.length/2)-Math.abs(i - pts.length/2))/pts.length);
+							w += step;
+						}
+						
+						// draw outer line
+						gfx.strokeStyle = '#000';
+						gfx.lineWidth = LINK_OUTER;
+						gfx.beginPath();
+						gfx.moveTo(pts[0],pts[1]);
+						for(var i=2; i<pts.length; i+=2) {
+							gfx.lineTo(pts[i],pts[i+1]);
+						}
+						gfx.stroke();
+						
+						// draw inner line
+						var gradient=gfx.createLinearGradient(0,0,170,0);
+						gradient.addColorStop("0",'hsl('+A.hue+', 80%, 70%)');
+						gradient.addColorStop("1.0",'hsl('+B.hue+', 80%, 70%)');
+
+						gfx.strokeStyle = gradient;
+						gfx.lineWidth = LINK_INNER;
+						gfx.beginPath();
+						gfx.moveTo(pts[0],pts[1]);
+						for(var i=2; i<pts.length; i+=2) {
+							gfx.lineTo(pts[i],pts[i+1]);
+						}
+						gfx.stroke();
+						
+					case 2: // arrow from B to A
+						var s = boardToScreen(B.x,B.y,true);
+						var x1 = B.x + (A.x - B.x) * progress,
+							y1 = B.y + (A.y - B.y) * progress;
+						var e = boardToScreen(x1,y1,true);
+						//var s = [0,0], e = [screenWidth * progress,screenHeight * progress];
+						drawArrow(gfx, s[0], s[1], e[0], e[1]);
+					case 3: // full line with a skull
+						var s = boardToScreen(A.x,A.y,true);
+						var e = boardToScreen(B.x,B.y,true);
+						//var s = [0,0], e = [screenWidth,screenHeight];
+						var x = s[0] + (e[0] - s[0]) * progress,
+							y = s[1] + (e[1] - s[1]) * progress;
+						
+						// draw outer line
+						gfx.strokeStyle = '#000';
+						gfx.lineWidth = LINK_OUTER;
+						gfx.beginPath();
+						gfx.moveTo(s[0],s[1]);
+						gfx.lineTo(e[0],e[1]);
+						gfx.stroke();
+						
+						// draw inner line
+						gfx.strokeStyle = '#800';
+						gfx.lineWidth = LINK_INNER;
+						gfx.beginPath();
+						gfx.moveTo(s[0],s[1]);
+						gfx.lineTo(e[0],e[1]);
+						gfx.stroke();
+						
+						drawSkull(gfx, HALF_BLOCK_SIZE_DISPLAY, x, y-BLOCK_TO_PIXELS);
 				}
 				
-				// draw outer line
-				gfx.strokeStyle = LINK_SCOLOR;
-				gfx.lineWidth = LINK_OUTER;
-				gfx.beginPath();
-				gfx.moveTo(pts[0],pts[1]);
-				for(var i=2; i<pts.length; i+=2) {
-					gfx.lineTo(pts[i],pts[i+1]);
-				}
-				gfx.stroke();
-				
-				// draw inner line
-				gfx.strokeStyle = LINK_COLOR;
-				gfx.lineWidth = LINK_INNER;
-				gfx.beginPath();
-				gfx.moveTo(pts[0],pts[1]);
-				for(var i=2; i<pts.length; i+=2) {
-					gfx.lineTo(pts[i],pts[i+1]);
-				}
-				gfx.stroke();
-				break;
+				break; // end of LINK
 		}
 		
 	});
+}
+
+
+var skullScaleOff = 0;
+function drawSkull(gfx, scale, x, y) {
+	var max = Math.round(scale*1.5);
+	scale = scale + (((max*.75)-Math.abs(skullScaleOff - max/2)))
+	skullScaleOff = ++skullScaleOff % max;
+	gfx.strokeStyle = '#000';
+	gfx.lineWidth = 4;
+	gfx.beginPath();
+	gfx.arc(x,y,scale,0,2*Math.PI);
+	gfx.stroke();
+	gfx.beginPath();
+	var o1 = 2*scale, o2 = .8*scale;
+	gfx.moveTo(x-o1, y+o2);
+	gfx.lineTo(x+o1, y+o1);
+	gfx.moveTo(x+o1, y+o2);
+	gfx.lineTo(x-o1, y+o1);
+	o1 = .6*scale; o2 = .4*scale; var o3 = .2*scale
+	gfx.moveTo(x-o1, y-o2);
+	gfx.lineTo(x-o3, y);
+	gfx.moveTo(x-o3, y-o2);
+	gfx.lineTo(x-o1, y);
+
+	gfx.moveTo(x+o3, y-o2);
+	gfx.lineTo(x+o1, y);
+	gfx.moveTo(x+o1, y-o2);
+	gfx.lineTo(x+o3, y);
+	gfx.stroke();
+}
+
+var off = 1; // TODO: this should be tied to the link itself.
+function drawArrow(gfx, x0, y0, x1, y1, color, isDashed) {
+	 //variables to be used when creating the arrow
+	var headlen = 10;
+	var angle = Math.atan2(y1-y0,x1-x0);
+	//starting path of the arrow from the start square to the end square and drawing the stroke
+	gfx.beginPath();
+	gfx.moveTo(x0, y0);
+	gfx.lineTo(x1, y1);
+	gfx.setLineDash([5, 15]);
+	gfx.lineDashOffset = off; off =  (off + 3) % 100;
+	gfx.strokeStyle = "#cc0000";
+	gfx.lineWidth = 5;
+	gfx.stroke();
+	gfx.setLineDash([0,0]); 
+	gfx.lineDashOffset=0;
+	
+	//starting a new path from the head of the arrow to one of the sides of the point
+	gfx.beginPath();
+	gfx.moveTo(x1, y1);
+	gfx.lineTo(x1-headlen*Math.cos(angle-Math.PI/7),y1-headlen*Math.sin(angle-Math.PI/7));
+
+	//path from the side point of the arrow, to the other side point
+	gfx.lineTo(x1-headlen*Math.cos(angle+Math.PI/7),y1-headlen*Math.sin(angle+Math.PI/7));
+
+	//path from the side point back to the tip of the arrow, and then again to the opposite side point
+	gfx.lineTo(x1, y1);
+	gfx.lineTo(x1-headlen*Math.cos(angle-Math.PI/7),y1-headlen*Math.sin(angle-Math.PI/7));
+
+	//draws the paths created above
+	gfx.strokeStyle = "#cc0000";
+	gfx.lineWidth = 5;
+	gfx.stroke();
+	gfx.fillStyle = "#cc0000";
+	gfx.fill();
 }
 
 function useAbility() {
