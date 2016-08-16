@@ -4,7 +4,8 @@ module.exports = {
 	clearAroundPoint,
 	triggerCooldown,
 	hasCrashedInto,
-	killPlayer
+	killPlayer,
+	newState
 }
 
 global.board = { // game board
@@ -98,13 +99,13 @@ function clearAroundPoint(x,y,r) {
 }
 function triggerCooldown(p,cd) {
 	if(cd)
-		p.cooldown = Math.max(p.cooldown,cd);
+		p.cooldown = cd;
 	else
 		p.cooldown = Math.max(p.cooldown,p.maxCooldown);
 }
 
 function hasCrashedInto(crashee, crasher, customMsg) {
-	crashee.pts += crasher.pts;
+	crashee.pts += crasher.pts * 0.25;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
 			if(Math.abs(board.blockId[i][j]) == crashee.blocId) {
@@ -148,4 +149,11 @@ function killPlayer(p, reason, message) {
 	} catch(err) {
 		console.log('error while killing player: ' + err);
 	}
+}
+
+function newState(p,x,y,dx,dy,hue) {
+	p.x = x; p.y = y;
+	p.dx = dx; p.dy = dy;
+	p.hue = hue;
+	sockets[p.id].emit('newState',p.x,p.y,p.dx,p.dy,p.hue);
 }

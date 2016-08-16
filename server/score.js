@@ -36,9 +36,11 @@ function addScore(name, score) {
 		if(leaderboard.length > MAX_LENGTH)
 			leaderboard.pop();
 		// write to disk
-		jsonfile.writeFile(file, leaderboard, function (err) {
+		try {
+		jsonfile.writeFile(file, leaderboard);
+		}catch(err) {
 			console.error('Failed to serizalize/save leaderboard: ' + err);
-		})
+		}
 	}
 }
 

@@ -5,15 +5,23 @@
 // onLinkComplete(A,B)
 // onPlayerWallHit(x,y,p) // returns true if player lives, false if he dies
 // onChangePosition(x,y,p)
+// afterCacheStatsLogic(p)
 var b = require('./board.js');
 var objects = require('./gameObject.js');
+
+// abilities constants
+const EASY_LANDING_CLEAR_RADIUS = 8;
+const POINTS_VAC_STEAL_RATIO = 0.50; // the ratio of points stolen
+const C4_CD = 2; // the cooldown triggered
+const BULLDZR_CLEARING_DURATION = 3.5; // the number of seconds the clearing effect lasts
+const BULLDZR_RADIUS_CLEAR = 2;
 
 module.exports = {
   abilities: [
 		{
-			name: '4 reds',
-			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal a large number of points.',
-			recipe: [0,0,0,0,4,0],
+			name: 'Point Vacuum',
+			description: 'After teleporting, you channel a ray on a nearby player in attempt to steal a large number of points.',
+			recipe: [0,0,0,2,2,0], // purple, yellow, blue, green, red, orange
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 				
@@ -21,17 +29,17 @@ module.exports = {
 					objects.createLink(p, nearestPlayer, 1.5, 10, 2);
 			},
 			onLinkComplete: function(A,B) {
-				var ptsLoss = B.pts * ABILITY_4_RED_POINTS_STEAL_RATIO;
+				var ptsLoss = B.pts * POINTS_VAC_STEAL_RATIO;
 				B.pts -= ptsLoss;
 				A.pts += ptsLoss;
 			}
 		},
 		{
-			name: '4 purples',
+			name: 'Easy Landing',
 			description: 'Your teleport clearing effect now also removes power ups in a large area.',
-			recipe: [4,0,0,0,0,0],
+			recipe: [4,0,0,0,0,0], // purple, yellow, blue, green, red, orange
 			onTeleportLanding: function(x,y,p) {
-				b.applyLogicAroundPosition(x,y,ABILITY_4_PURPLE_CLEAR_RADIUS, function(x,y,result){
+				b.applyLogicAroundPosition(x,y,EASY_LANDING_CLEAR_RADIUS, function(x,y,result){
 					if(board.isPowerUp[x][y] != PU_ID_NONE) {
 						var id = board.isPowerUp[x][y];
 						board.isPowerUp[x][y] = PU_ID_NONE;
@@ -41,18 +49,18 @@ module.exports = {
 			}
 		},
 		{
-			name: '4 blues',
-			description: 'After teleporting, you also clear blocks in a small radius for a short duration upon landing.',
-			recipe: [0,0,4,0,0,0],
+			name: 'Bulldozer blade',
+			description: 'After teleporting, you also clear blocks in a small radius for a short duration.',
+			recipe: [2,0,2,0,0,0], // purple, yellow, blue, green, red, orange
 			onChangePosition: function(x,y,p) {
-				if(p.cooldown >= p.maxCooldown - ABILITY_4_BLUE_CLEARING_DURATION)
-					b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,ABILITY_4_BLUE_RADIUS_CLEAR);
+				if(p.cooldown >= p.maxCooldown - BULLDZR_CLEARING_DURATION)
+					b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,BULLDZR_RADIUS_CLEAR);
 			}
 		},
 		{
-			name: '4 yellows',
-			description: 'After teleporting, you channel a beam on a nearby player in attempt to steal their color.',
-			recipe: [0,4,0,0,0,0],
+			name: 'Chameleon Device',
+			description: 'After teleporting, you channel a ray on a nearby player in attempt to steal their color.',
+			recipe: [2,2,0,0,0,0], // purple, yellow, blue, green, red, orange
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 				if(nearestPlayer != null) // create link if possible
@@ -65,24 +73,24 @@ module.exports = {
 			}
 		},
 		{
-			name: '4 greens',
+			name: 'C-4',
 			description: 'When your teleport is ready, the next wall you hit will cause a large clearing effect and trigger a short cooldown.',
-			recipe: [0,0,0,4,0,0],
+			recipe: [0,0,2,0,2,0], // purple, yellow, blue, green, red, orange
 			onPlayerWallHit: function(x,y,p) {
 				if(p.cooldown > 0)
 					return false; // kill player
 					
-				b.triggerCooldown(p,ABILITY_4_GREEN_CD);
-				b.clearAroundPoint(x,y,ABILITY_4_GREEN_RADIUS_CLEAR);
-				sockets[p.id].emit('trCd', ABILITY_4_GREEN_CD);
+				b.triggerCooldown(p,C4_CD);
+				b.clearAroundPoint(x,y,6);
+				sockets[p.id].emit('trCd', C4_CD);
 	
 				return true;
 			}
 		},
 		{
-			name: '4 oranges',
-			description: 'Your teleport clearing effect can now kill other players.',
-			recipe: [0,0,0,0,0,4],
+			name: 'Death Ray',
+			description: 'After teleporting, you channel a Death Ray in attempt to eliminate a nearby player.',
+			recipe: [2,0,0,0,0,2], // purple, yellow, blue, green, red, orange
 			onTeleportLanding: function(x,y,p) {
 				var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 				
@@ -90,34 +98,70 @@ module.exports = {
 					objects.createLink(p, nearestPlayer, 2.5, 9, 3);
 			},
 			onLinkComplete: function(A,B) {
-				b.hasCrashedInto(A, B, 'You were eliminated by ' + p.name + '\'s power up ability.');
+				b.hasCrashedInto(A, B, 'You were eliminated by ' + A.name + '\'s power up ability.');
+			}
+		},
+		{
+			name: 'Air Bags',
+			description: 'Crashing into a wall will cause you to lose some points instead of killing you.',
+			recipe: [0,0,0,4,0,0], // purple, yellow, blue, green, red, orange
+			onPlayerWallHit: function(x,y,p) {					
+				b.clearAroundPoint(x,y,1);
+				p.pts -= Math.Max(250,p.pts*.15);
+	
+				return true;
+			}
+		},
+		{
+			name: 'Switch-A-Roo',
+			description: 'After teleporting, you channel a ray to switch position and color with another player.',
+			recipe: [0,0,0,0,0,4], // purple, yellow, blue, green, red, orange
+			onTeleportLanding: function(x,y,p) {
+				var nearestPlayer = b.findNearestPlayer(x,y,10,p);
+				if(nearestPlayer != null) // create link if possible
+					objects.createLink(p, nearestPlayer, 1.50, 12, 1); // TODO: add unique effect
+			},
+			onLinkComplete: function(A,B) {
+				var tmp = {
+					x:A.x,
+					y:A.y,
+					dx:A.dx,
+					dy:A.dy,
+					hue:A.hue
+				};
+				b.newState(A,B.x,B.y,B.dx,B.dy,B.hue);
+				b.newState(B,tmp.x,tmp.y,tmp.dx,tmp.dy,tmp.hue);
+				board.colorsLUT[A.blocId] = A.hue;
+				board.colorsLUT[B.blocId] = B.hue;
+			}
+		},
+		{
+			name: 'Rapid recovery',
+			description: 'After teleporting, you channel a ray on a nearby player in attempt to trigger their cooldown, and reset yours.',
+			recipe: [2,0,0,0,2,0], // purple, yellow, blue, green, red, orange
+			onTeleportLanding: function(x,y,p) {
+				var nearestPlayer = b.findNearestPlayer(x,y,8,p);
+				
+				if(nearestPlayer != null)  // create link if possible
+					objects.createLink(p, nearestPlayer, 0.75, 9, 2);
+			},
+			onLinkComplete: function(A,B) {
+				b.triggerCooldown(A,0.15);
+				sockets[A.id].emit('trCd', 0.15);
+				b.triggerCooldown(B);
+				sockets[B.id].emit('trCd', B.maxCooldown);
+			}
+		},
+		{
+			name: 'Improved Teleport',
+			description: 'Greatly reduces the cooldown on your teleport at the cost of points.',
+			recipe: [2,0,0,2,0,0], // purple, yellow, blue, green, red, orange
+			afterCacheStatsLogic: function(p) {
+				p.maxCooldown = 0.15;
+			},
+			onTeleportLanding: function(x,y,p) {
+				p.pts -= 100;
 			}
 		}
 	]
 };
-
-
-
-// this may be useful at some point..
-	/*if(b.links) {
-		if(playerA.slotAggregation[PU_ID_PTSLOSS-1] > 0) { // has the ability to ally
-			if(board.colorsLUT[playerA.blocId] != board.colorsLUT[playerB.blocId]) { // different colors
-				if(playerB.pts >= playerA.pts * (1-LINK_ALLIANCE_T) && playerB.pts <= playerA.pts * (1/LINK_ALLIANCE_T)) { // is withing threshold
-					if(Math.abs(playerA.x - playerB.x) + Math.abs(playerA.y - playerB.y) <= LINK_RANGE) { // link range
-						if(playerA.dx == playerB.dx && playerA.dy == playerB.dy) { // direction is the same
-							if(!(playerA in b.links) && !(playerB in b.links)) { // players don't already have a link
-								if(playerA.pts > playerB.pts) {
-									console.log('new link created between ' + playerA.name + ' and ' + playerB.name + '!');
-									b.links[playerA] = {
-										fromP: playerA,
-										toP: playerB,
-										dt: 0
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}*/

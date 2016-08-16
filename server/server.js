@@ -496,7 +496,7 @@ function getRandomInt(min, max) {
 }
 
 function teleportPlayer(player) {
-	player.cooldown = player.maxCooldown;
+	b.triggerCooldown(player);
 	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
 	b.clearAroundPoint(player.x,player.y,r);
 	
@@ -525,20 +525,7 @@ function pickupPowerUp(player, powerUpType) {
 	for(var i =0;i<PU_SLOTS ;i++)
 		if(player.slots[i] > 0)
 			player.slotAggregation[player.slots[i]-1]++;
-		
-	// cache some stuff
-	player.maxCooldown = TELE_COOLDOWN - player.slotAggregation[PU_ID_TELECD-1] * PU_TELE_CD;
-	player.dpts = DEFAULT_POINTS_PER_SEC + player.slotAggregation[PU_ID_POINTS-1] * PU_POINTS_MOD ;
-	player.teleportDist = TELE_DISTANCE + player.slotAggregation[PU_ID_TELERANGE-1] * PU_TELE_RANGE;
-	player.lpr = DEFAULT_LOSING_POINTS_RATIO - player.slotAggregation[PU_ID_PTSLOSS-1] * PU_PTS_LOSS_MOD;
-	
-	sockets[player.id].emit('newVals', {
-		maxCooldown: player.maxCooldown,
-		dpts: player.dpts,
-		lpr: player.lpr,
-		teleportDist: player.teleportDist
-	});
-	
+			
 	// update ability
 	player.specialAbility = abilities.find( function(a) {
 		for(var i=0;i<MAX_POWERUP_ID;i++)
@@ -548,9 +535,25 @@ function pickupPowerUp(player, powerUpType) {
 	});
 	
 	if(player.specialAbility)
-		sockets[player.id].emit('newAbility', player.specialAbility.description);
+		sockets[player.id].emit('newAbility', player.specialAbility.name + ': ' + player.specialAbility.description);
 	else
 		sockets[player.id].emit('newAbility', '');
+	
+	// cache some stuff
+	player.maxCooldown = TELE_COOLDOWN - player.slotAggregation[PU_ID_TELECD-1] * PU_TELE_CD;
+	player.dpts = DEFAULT_POINTS_PER_SEC + player.slotAggregation[PU_ID_POINTS-1] * PU_POINTS_MOD ;
+	player.teleportDist = TELE_DISTANCE + player.slotAggregation[PU_ID_TELERANGE-1] * PU_TELE_RANGE;
+	player.lpr = DEFAULT_LOSING_POINTS_RATIO - player.slotAggregation[PU_ID_PTSLOSS-1] * PU_PTS_LOSS_MOD;
+	
+	if(player.specialAbility && player.specialAbility.afterCacheStatsLogic)
+		player.specialAbility.afterCacheStatsLogic(player);
+	
+	sockets[player.id].emit('newVals', {
+		maxCooldown: player.maxCooldown,
+		dpts: player.dpts,
+		lpr: player.lpr,
+		teleportDist: player.teleportDist
+	});
 }
 
 // this function kicks players that are out of synch with the game clock.

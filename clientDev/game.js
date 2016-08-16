@@ -9,7 +9,7 @@ Game.prototype.handleNetwork = function(socket) {
 	var c = document.getElementById('cvs');
 	c.width = screenWidth; c.height = screenHeight;
 	bindKeyboard(c);
-	bindClickTap(c);
+	//bindClickTap(c);
 	
 	// this is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, b) {
@@ -117,14 +117,24 @@ Game.prototype.handleNetwork = function(socket) {
 	});
 	
 	socket.on('eliminatedPlayer', function () {
-		var lastFewBlocks = [];
-		var lastFewBlocksId = 0; 
+		lastFewBlocks = [];
+		lastFewBlocksId = 0; 
 	});
 	
 	socket.on('sync', function (x,y) {
 		player.x = x;
 		player.y = y;
 		updatePosition(); // update with server
+	});
+	
+	socket.on('newState', function (x,y,dx,dy,hue) {
+		player.x = x;
+		player.y = y;
+		player.dx = dx;
+		player.dy = dy;
+		player.hue = hue;
+		lastFewBlocks = [];
+		lastFewBlocksId = 0; 
 	});
 	
 	socket.on('queue', function (q,qm) {
@@ -617,7 +627,7 @@ function drawGameObjects(gfx) {
 							gfx.lineTo(pts[i],pts[i+1]);
 						}
 						gfx.stroke();
-						
+						break;
 					case 2: // arrow from B to A
 						var s = boardToScreen(B.x,B.y,true);
 						var x1 = B.x + (A.x - B.x) * progress,
@@ -625,6 +635,7 @@ function drawGameObjects(gfx) {
 						var e = boardToScreen(x1,y1,true);
 						//var s = [0,0], e = [screenWidth * progress,screenHeight * progress];
 						drawArrow(gfx, s[0], s[1], e[0], e[1]);
+						break;
 					case 3: // full line with a skull
 						var s = boardToScreen(A.x,A.y,true);
 						var e = boardToScreen(B.x,B.y,true);
@@ -649,6 +660,7 @@ function drawGameObjects(gfx) {
 						gfx.stroke();
 						
 						drawSkull(gfx, HALF_BLOCK_SIZE_DISPLAY, x, y-BLOCK_TO_PIXELS);
+						break;
 				}
 				
 				break; // end of LINK
