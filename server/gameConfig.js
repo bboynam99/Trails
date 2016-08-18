@@ -1,14 +1,14 @@
 //
 /** Game Constants **/
 //
-global.BOARD_W = 50;
-global.BOARD_H = 50;
+global.BOARD_W = 200;
+global.BOARD_H = 200;
 global.PLAYER_LOS_RANGE = 25;
 global.SPAWN_SPACE_NEEDED = 10;
 global.INITIAL_VELOCITY = 7.0;
 global.DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 global.DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
-global.NUM_POWERUPS_ONBOARD = 40;
+global.NUM_POWERUPS_ONBOARD = 20;
 global.WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
 global.LINK_START = 0.01; // link will show after this (ms)
 global.LINK_END = 0.75; // link will end after this
