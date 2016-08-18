@@ -110,7 +110,7 @@ function triggerCooldown(p,cd) {
 }
 
 function hasCrashedInto(crashee, crasher, customMsg) {
-	crashee.pts += crasher.pts * 0.25;
+	crashee.pts += crasher.pts * 0.35;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
 			if(Math.abs(board.blockId[i][j]) == crashee.blocId) {
@@ -173,15 +173,21 @@ function clearEntireBoard() {
 }
 
 function teleportPlayer(player,x,y,cd) {
+	var originalX = Math.round(player.x), originalY = Math.round(player.y);
 	player.x = x;
 	player.y = y;
 	player.lastX = Math.round(x);
 	player.lastY = Math.round(y);
-			
+	
+	if(player.specialAbility && player.specialAbility.teleportLandingOverride){
+		player.specialAbility.teleportLandingOverride(player);
+		return;
+	}
+	
 	triggerCooldown(player, cd);
 	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
 	clearAroundPoint(player.x,player.y,r);
 	
 	if(player.specialAbility && player.specialAbility.onTeleportLanding)
-		player.specialAbility.onTeleportLanding(player.x,player.y,player);
+		player.specialAbility.onTeleportLanding(player.x,player.y,player,originalX,originalY);
 }

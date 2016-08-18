@@ -1,14 +1,14 @@
 //
 /** Game Constants **/
 //
-global.BOARD_W = 200;
-global.BOARD_H = 200;
+global.BOARD_W = 80;
+global.BOARD_H = 80;
 global.PLAYER_LOS_RANGE = 25;
 global.SPAWN_SPACE_NEEDED = 10;
 global.INITIAL_VELOCITY = 7.0;
 global.DEFAULT_POINTS_PER_SEC = 15; // The default number of points per second
 global.DEFAULT_LOSING_POINTS_RATIO = -10; // The ratio of ponts gain the player losses while on self-track
-global.NUM_POWERUPS_ONBOARD = 20;
+global.NUM_POWERUPS_ONBOARD = 50;
 global.WALL_SOLIDIFICATION = 150; // the grace period in ms before a wall solidifies and can harm players
 global.LINK_START = 0.01; // link will show after this (ms)
 global.LINK_END = 0.75; // link will end after this
@@ -33,9 +33,9 @@ global.PU_ID_SPEED = 5;
 global.PU_ID_TELERANGE = 6;
 global.MAX_POWERUP_ID = 6; // UPDATE THIS everytime a new power up is added
 
-global.PU_SPEED_MOD = 1.25; // bloc per second per PU
+global.PU_SPEED_MOD = 1.0; // bloc per second per PU
 global.PU_TELE_CD = 1.25; // bonus sec cd per PU
 global.PU_TELE_AOE = 2; // bonus radius per PU
 global.PU_PTS_LOSS_MOD = -2.4; // The point loss modifier when stepping on own track
-global.PU_POINTS_MOD = 5; // bonus points per sec per PU
-global.PU_TELE_RANGE = 1; // bonus teleport distance
+global.PU_POINTS_MOD = 3; // bonus points per sec per PU
+global.PU_TELE_RANGE = 2; // bonus teleport distance

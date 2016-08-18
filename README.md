@@ -20,6 +20,7 @@ This is private repo for the next big online io game.
 - REDx4: when you trigger it, it seems to transfer points somehow
 
 *** known bugs:
+RED/OJ: does not check cooldown
 
 *** admin commands (new feature)
 - broad cast restart countdown with custom message
@@ -29,7 +30,7 @@ This is private repo for the next big online io game.
 
 Green: is about getting points.
 Red: is about playing fast.
-Orange: is about suprising others.
+Orange: is about surprising others.
 Yellow: is about playing on your own.
 Blue: is about clearing stuff in your way.
 Purple: is about teleporting.
@@ -47,14 +48,14 @@ purple-yellow	Chameleon Device: After teleporting, channel a ray on a nearby pla
 purple-blue		Bulldozer blade: After teleporting, you also clear blocks in a small radius for a short duration.
 purple-orange	Death Ray: After teleporting, channel a Death Ray in attempt to eliminate a nearby player.
 red-green		Point Vacuum: After teleporting, channel a ray on a nearby player in attempt to steal a large number of points. 
-red-yellow		*Black Hole: Before teleporting, drop a black hole, attracting nearby players for a few seconds.
+red-yellow		Black Hole: Before teleporting, drop a black hole, attracting nearby players for a few seconds.
 red-blue		C-4: When your teleport is ready, the next wall you hit will cause a large clearing effect and trigger a short cooldown.
+green-yellow	Bonus Points: Picking up additional yellow or green Power Ups will provide bonus points.
 red-orange		Quick Escape: Your teleport triggers automatically when you hit a wall. Greatly lowers the cooldown. 
-green-yellow	*Bonus Points: Picking up additional yellow or green Power Ups will provide bonus points.
-green-blue		*Recycling Device: Gain bonus points for every block you clear by teleporting.
-green-orange	*Point ray: Channel a ray on a nearby player in attempt to steal a large number of points. Replaces teleport.
+green-blue		Recycling Device: Gain bonus points for every block you clear by teleporting.
+green-orange	Point ray: Channel a ray on a nearby player in attempt to steal a large number of points. Replaces teleport.
 yellow-blue		*Cloaking Device: After teleporting, become invisible for a short duration. While invisible, you can pass through all walls. 
-yellow-orange	*Stealing Ray: After teleporting, channel a ray in attempt to steal all of another player's power ups.
+yellow-orange	Stealing Ray: After teleporting, channel a ray in attempt to steal all of another player's power ups.
 blue-orange		Entrenchment: Clear everything in a large area around you, surrounding you with a thin wall. Replaces teleport.
 
 

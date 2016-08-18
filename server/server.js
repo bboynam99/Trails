@@ -6,10 +6,10 @@ var config  = require('./config.json');
 require('./gameConfig.js');
 app.use(express.static(__dirname + '/../client'));
 var b = require('./board.js');
-var abilities = require('./abilities.js'); 
-abilities = abilities.abilities;
 var spawningQueue = require('./spawningQueue.js'); 
 global.score = require('./score.js');
+var abilityManager = require('./abilities.js'); 
+var abilities = abilityManager.abilities;
 
 //
 /** Game variables **/
@@ -510,43 +510,14 @@ function checkHeartBeat() {
 }
 
 function pickupPowerUp(player, powerUpType) {
+	if(player.specialAbility && player.specialAbility.powerUpPickupOverride)
+		if(!player.specialAbility.powerUpPickupOverride(player, powerUpType))
+			return;
+	
 	player.slots[player.lastSlotFilled] = powerUpType;
 	player.lastSlotFilled = (player.lastSlotFilled + 1) % PU_SLOTS;
-	for(var i =0;i<MAX_POWERUP_ID ;i++)
-		player.slotAggregation[i] = PU_ID_NONE;
 	
-	for(var i =0;i<PU_SLOTS ;i++)
-		if(player.slots[i] > 0)
-			player.slotAggregation[player.slots[i]-1]++;
-			
-	// update ability
-	player.specialAbility = abilities.find( function(a) {
-		for(var i=0;i<MAX_POWERUP_ID;i++)
-			if(player.slotAggregation[i] != a.recipe[i])
-				return false;
-		return true;
-	});
-	
-	if(player.specialAbility)
-		sockets[player.id].emit('newAbility', player.specialAbility.name + ': ' + player.specialAbility.description, player.specialAbility.teleportOverride != null); // last param = true if client should NOT exec tele logic
-	else
-		sockets[player.id].emit('newAbility', '', false);
-	
-	// cache some stuff
-	player.maxCooldown = TELE_COOLDOWN - player.slotAggregation[PU_ID_TELECD-1] * PU_TELE_CD;
-	player.dpts = DEFAULT_POINTS_PER_SEC + player.slotAggregation[PU_ID_POINTS-1] * PU_POINTS_MOD ;
-	player.teleportDist = TELE_DISTANCE + player.slotAggregation[PU_ID_TELERANGE-1] * PU_TELE_RANGE;
-	player.lpr = DEFAULT_LOSING_POINTS_RATIO - player.slotAggregation[PU_ID_PTSLOSS-1] * PU_PTS_LOSS_MOD;
-	
-	if(player.specialAbility && player.specialAbility.afterCacheStatsLogic)
-		player.specialAbility.afterCacheStatsLogic(player);
-	
-	sockets[player.id].emit('newVals', {
-		maxCooldown: player.maxCooldown,
-		dpts: player.dpts,
-		lpr: player.lpr,
-		teleportDist: player.teleportDist
-	});
+	abilityManager.aggregatePowerUp(player);
 }
 
 // this function kicks players that are out of synch with the game clock.

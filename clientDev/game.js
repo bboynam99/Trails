@@ -575,14 +575,28 @@ function updateGameObjects(dt) {
 				if(l.dt >= l.exp)
 					gameObjects.splice(i, 1);
 				break;
+			case 2: // Link
+				l.dt += dt;
+				if(l.dt >= l.exp)
+					gameObjects.splice(i, 1);
+				else {
+					// attract player
+					var dx = (l.x - player.x);
+					var dy = (l.y - player.y);
+					var dist = Math.sqrt(dx*dx+dy*dy);
+					const BLKHL_RADIUS = 20, BLKHL_STR = 8;
+					var mag = (1 - Math.min(dist / l.r,1)) * l.str;
+					player.x += dx/dist * mag * dt;
+					player.y += dy/dist * mag * dt;
+				}
+				break;
 		}
 	}
 }
 
 function drawGameObjects(gfx) {
 	gameObjects.forEach(function (l) {
-		//console.log('searching for type of ' + l.type + ' num obj=' + gameObjects.length);
-		switch(l.type){
+		switch(l.type) {
 			case 1: // LINK
 				//console.log('found type! its a link!');
 				var A = getPlayerFromId(l.fromP);
@@ -670,11 +684,48 @@ function drawGameObjects(gfx) {
 				}
 				
 				break; // end of LINK
+			case 2: // BLACK HOLE
+				var p = boardToScreen(l.x,l.y,true);
+				drawBlkHl(gfx,p[0],p[1],0.35*l.r * BLOCK_TO_PIXELS,l.dt);
+				break;// end of BLACK HOLE
 		}
 		
 	});
 }
+var PI2 = Math.PI/2;
+function drawBlkHl(gfx,x,y,r,dt){
+	// draw center part
+	gfx.fillStyle = '#AAA';
+	gfx.beginPath();
+	gfx.arc(x,y,r,0,2*Math.PI);
+	gfx.fill();
 
+	gfx.fillStyle = '#444';
+	gfx.beginPath();
+	gfx.arc(x,y,.8*r,0,2*Math.PI);
+	gfx.fill();
+
+	gfx.fillStyle = '#000';
+	gfx.beginPath();
+	gfx.arc(x,y,.7*r,0,2*Math.PI);
+	gfx.fill();
+	//
+	gfx.lineWidth = 5; 
+	gfx.strokeStyle = '#333';
+	var phi = 2*Math.PI * dt * 0.075;
+	for(var theta=phi;theta<Math.PI*2 + phi;theta += Math.PI * 0.25) {
+		cx = Math.cos(theta) * r + x;
+		cy = Math.sin(theta) * r + y;
+		gfx.beginPath();
+		gfx.arc(cx,cy,r,0+theta, 1.15*PI2 + theta);
+		gfx.stroke();
+	}
+	//phi += Math.PI / 180; // .25 deg per frame
+	/*canvas.beginPath();
+	canvas.arc(cx - r/G,cy,r*G,3*PI2 + theta,0 + theta);
+	canvas.stroke();*/
+	//theta += Math.PI * 0.2;
+}
 
 var skullScaleOff = 0;
 function drawSkull(gfx, scale, x, y) {

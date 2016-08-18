@@ -3,10 +3,11 @@
 var b = require('./board.js');
 	
 module.exports = {
-	createLink, linksSkins
+	createLink,
+	createBlackHole
 };
 
-var LINK_ID=1;
+var LINK_ID=1, BKHL_ID=2;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -46,7 +47,6 @@ setInterval(updateLogic, 1000/10);
 //
 // LINKS
 //
-var linksSkins = Object.freeze({'electricArc':1});
 function createLink(playerA, playerB, duration, maxRange, linksSkin) {
 	if(playerA && playerB) {
 		//console.log('New link now channeling between ' + playerA.name + ' and ' + playerB.name);
@@ -99,4 +99,58 @@ function isLinkWithinRange(player,link) {
 	var dist1 = (Math.abs(link.data.fromP.x - player.x) + Math.abs(link.data.fromP.y - player.y));
 	var dist2 = (Math.abs(link.data.toP.x - player.x) + Math.abs(link.data.toP.y - player.y));
 	return (Math.min(dist1,dist2) <= PLAYER_LOS_RANGE*1.5);
+}
+
+//
+// BLACK HOLE
+//
+function createBlackHole(x,y,duration) {
+	var newBlackHole = {
+		type: BKHL_ID,
+		update: updateBlackHole,
+		isVisibleByPlayer: function(){return true;}, // always globally visible.
+		data: {
+			x: x,
+			y: y,
+			dt: 0,
+			exp: duration
+		},
+		toPlayerObject: toClientBlackhole
+	};
+	gameObjects.push(newBlackHole);
+	sendNewObject(newBlackHole);
+}
+
+const BLKHL_RADIUS = 20, BLKHL_STR = 7;
+function updateBlackHole(obj, dt){
+	obj.data.dt += dt;
+	//console.log('link time is now :' + obj.data.dt + ' of ' + obj.data.exp);
+	if(obj.data.dt >= obj.data.exp) { // link expired
+		removeObject(obj);
+		// TODO: align every player's X and Y
+		//console.log('Link completed!');
+	} else{
+		users.forEach(function(p) {
+			if(!p.isDead) {
+				var dx = (obj.data.x - p.x);
+				var dy = (obj.data.y - p.y);
+				var dist = Math.sqrt(dx*dx+dy*dy);
+				var mag = (1 - Math.min(dist / BLKHL_RADIUS,1)) * BLKHL_STR;
+				p.x += dx/dist * mag * dt;
+				p.y += dy/dist * mag * dt;
+				//console.log('emiting creating event for ' + obj.type + ' to player ' + player.name);
+			}
+		});
+	}
+}
+
+function toClientBlackhole(bh){
+	return {
+		type: bh.type,
+		x: bh.data.x,
+		y: bh.data.y,
+		exp: bh.data.exp,
+		r: BLKHL_RADIUS,
+		str: BLKHL_STR
+	};
 }
