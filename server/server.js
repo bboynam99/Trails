@@ -41,6 +41,7 @@ io.on('connection', function (socket) {
 		maxCooldown: TELE_COOLDOWN,
 		teleportDist: TELE_DISTANCE,
 		pts: 1, // player points
+		bestPts: 1, // player highest point count so far (for high score)
 		dpts: DEFAULT_POINTS_PER_SEC, // dpts/dt when you're positive
 		lpr: DEFAULT_LOSING_POINTS_RATIO, // dpts/dt ratio factor when you're negative (stepping on own track)
 		bonusSizeCache: 0, //use to cache the bonus size (so it is not recomputed constantly)
@@ -79,6 +80,7 @@ io.on('connection', function (socket) {
 	socket.on('mv', function (newInfo) {
 		//console.log('moving from ('+player.x+','+player.y+') to ('+newInfo.x+','+newInfo.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
 		if(!player.isDead) {
+			player.bestPts = Math.max(player.bestPts,player.pts);//update pts
 			player.dx = newInfo.dx;
 			player.dy = newInfo.dy;
 		
@@ -132,18 +134,18 @@ io.on('connection', function (socket) {
 		}
     });
 	socket.on('teleport', function(x,y,dx,dy) {
-		player.dx = dx; player.dy = dy;
-		if(player.cooldown > 1 || player.dx == player.dy)
-			b.killPlayer(player, 'used a powerup while still on CD', 'You were out of sync with the server :(');
-		else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) > 4){ // a small lag grace
+		if(player.cooldown > 1) { // is CD ready? I hope so!
+			b.killPlayer(player, 'used a powerup while still ' + player.cooldown + 's remain on CD', 'You were out of sync with the server :(');
+		} else if(player.specialAbility && player.specialAbility.teleportOverride) { // does the power up override the default behavior?
+			player.specialAbility.teleportOverride(player);
+		} else if(player.dx == player.dy) { // if not, are the dx and dy valid? i.e. not the same (diagonal or 0,0);
+			b.killPlayer(player, 'used a powerup while still ' + player.cooldown + 's remain on CD with direction ('+dx+','+dy+')', 'You were out of sync with the server :(');
+		} else if(Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) > 4){ // did the player go too fdar? with a small lag grace
 			console.log('Kicked player because teleport was off by ' + Math.abs(Math.abs(x - player.x) + Math.abs(y - player.y) - player.teleportDist) + ', which is greater than ' + 4);
 			b.killPlayer(player, 'teleported way too far.', 'You were out of sync with the server :(');
 		} else {
-			player.x = x;
-			player.y = y;
-			player.lastX = Math.round(x);
-			player.lastY = Math.round(y);
-			teleportPlayer(player);
+			player.dx = dx; player.dy = dy;
+			b.teleportPlayer(player,x,y);
 		}
 	});
 });
@@ -345,7 +347,7 @@ function movePlayer(p, dt) {
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
 		if (board.blockId[x][y] == B_EMPTY) {
 			board.blockId[x][y] = p.blocId * -1; // spawn "phantom" trail
-			board.BlockTs[x][y] = lastUpdate;
+			board.blockTs[x][y] = lastUpdate;
 		}
 		afterInterpolationMove(x,y,p);
 	}
@@ -361,9 +363,9 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 			beforeConfirmedMove(x0,y0,p);
 			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
 				board.blockId[x0][y0] = v;
-				board.BlockTs[x0][y0] = now;
+				board.blockTs[x0][y0] = now;
 				dilation(x0,y0,p,p.blocId);
-			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.BlockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
+			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.blockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
 				if(p.specialAbility && p.specialAbility.onPlayerWallHit)
 					if(p.specialAbility.onPlayerWallHit(x0,y0,p))
 						break;
@@ -408,8 +410,8 @@ function afterInterpolationMove(x,y,p) {
 function beforeConfirmedMove(x,y,p) {
 	// update points
 	
-	if(board.blockId[x][y]*-1 != p.id && board.colorsLUT[board.blockId[x][y]] == p.hue && now - board.BlockTs[x][y] >= 2000/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
-		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (board.colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.BlockTs[x][y]) +'ms');
+	if(board.blockId[x][y]*-1 != p.id && board.colorsLUT[board.blockId[x][y]] == p.hue && now - board.blockTs[x][y] >= 2000/p.velocity) { // this is 1000 ms / speed (with a little wiggle room)
+		//console.log('removing pts, isnotselfInterp=' + (board.blockId[x][y]*-1 != p.id) + ', colorChk=' + (board.colorsLUT[board.blockId[x][y]] == p.hue) + ', dt=' + (now - board.blockTs[x][y]) +'ms');
 		p.pts += (p.dpts*p.lpr) / p.velocity;
 		//console.log('--');
 	} else {
@@ -436,7 +438,7 @@ function dilation(x,y,p,v) {
 				initVal = board.blockId[i][j]
 				if (initVal <= B_EMPTY && initVal != v) {
 					board.blockId[i][j] = v;
-					board.BlockTs[i][j] = board.BlockTs[x][y];
+					board.blockTs[i][j] = board.blockTs[x][y];
 				}
 			}
 	}
@@ -484,7 +486,7 @@ function spawnPowerUps() {
 function cleanPhantomTrails() {
 	for (var i=1;i<board.W-1;i++) {
 		for (var j=1;j<board.H-1;j++) {
-			if(board.blockId[i][j] < B_BORDERS * -1 && lastUpdate - board.BlockTs[i][j] >= 1000) { //phantom trails should last this long
+			if(board.blockId[i][j] < B_BORDERS * -1 && lastUpdate - board.blockTs[i][j] >= 1000) { //phantom trails should last this long
 				board.blockId[i][j] = B_EMPTY;
 			}
 		}
@@ -493,15 +495,6 @@ function cleanPhantomTrails() {
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function teleportPlayer(player) {
-	b.triggerCooldown(player);
-	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
-	b.clearAroundPoint(player.x,player.y,r);
-	
-	if(player.specialAbility && player.specialAbility.onTeleportLanding)
-		player.specialAbility.onTeleportLanding(player.x,player.y,player);
 }
 
 var now;
@@ -535,9 +528,9 @@ function pickupPowerUp(player, powerUpType) {
 	});
 	
 	if(player.specialAbility)
-		sockets[player.id].emit('newAbility', player.specialAbility.name + ': ' + player.specialAbility.description);
+		sockets[player.id].emit('newAbility', player.specialAbility.name + ': ' + player.specialAbility.description, player.specialAbility.teleportOverride != null); // last param = true if client should NOT exec tele logic
 	else
-		sockets[player.id].emit('newAbility', '');
+		sockets[player.id].emit('newAbility', '', false);
 	
 	// cache some stuff
 	player.maxCooldown = TELE_COOLDOWN - player.slotAggregation[PU_ID_TELECD-1] * PU_TELE_CD;

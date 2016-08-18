@@ -5,7 +5,9 @@ module.exports = {
 	triggerCooldown,
 	hasCrashedInto,
 	killPlayer,
-	newState
+	newState,
+	clearEntireBoard,
+	teleportPlayer
 }
 
 global.board = { // game board
@@ -13,7 +15,7 @@ global.board = { // game board
 	W: BOARD_W,
 	blockId: null,
 	isPowerUp: null,
-	BlockTs: null,
+	blockTs: null,
 	numPowerUpsOnBoard: 0,
 	colorsLUT: []
 };
@@ -22,15 +24,15 @@ board.colorsLUT = [];
 // init board
 board.blockId = new Array(board.W);
 board.isPowerUp = new Array(board.W);
-board.BlockTs = new Array(board.W);
+board.blockTs = new Array(board.W);
 for (var i=0;i<board.W;i++) {
 	board.blockId[i] = new Array(board.H);
 	board.isPowerUp[i] = new Array(board.H);
-	board.BlockTs[i] = new Array(board.H);
+	board.blockTs[i] = new Array(board.H);
 	for (var j=0;j<board.H;j++) {
 		board.isPowerUp[i][j] = PU_ID_NONE;
 		board.blockId[i][j] = B_EMPTY;
-		board.BlockTs[i][j] = 0;
+		board.blockTs[i][j] = 0;
 		if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
 			board.blockId[i][j] = B_BORDERS;
 	}
@@ -53,6 +55,8 @@ global.blocIdLUT = {};
 // calls logic(x,y,r,board,previousResult) at each position, in a "fold left" fashion
 function applyLogicAroundPosition(x,y,r,logic) {
 	r = Math.round(r);
+	x = Math.round(x);
+	y = Math.round(y);
 	X0 = Math.max(x - r,1);
 	X1 = Math.min(x + r, board.W-2);
 	Y0 = Math.max(y - r,1);
@@ -61,8 +65,9 @@ function applyLogicAroundPosition(x,y,r,logic) {
 	result = null;
 	for (var i=X0;i<=X1;i++) {
 		for (var j=Y0;j<=Y1;j++) {
-			if((i-x)*(i-x)+(j-y)*(j-y) <= r)
-				result = logic(i,j,result);
+			var dist = (i-x)*(i-x)+(j-y)*(j-y);
+			if(dist <= r)
+				result = logic(i,j,result,dist);
 		}
 	}
 	return result;
@@ -121,10 +126,11 @@ function hasCrashedInto(crashee, crasher, customMsg) {
 
 function killPlayer(p, reason, message) {
 	try {
-		score.addScore(p.name,p.pts);
+		score.addScore(p.name,p.bestPts);
 		console.log('Killing player ' + p.name + ' because: ' + reason)
 		p.isDead = true;
-		p.pts = 0;
+		p.pts = 1;
+		p.bestPts = 1;
 		p.cooldown = TELE_COOLDOWN;
 		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
 		p.bonusSizeCache = 0;
@@ -156,4 +162,26 @@ function newState(p,x,y,dx,dy,hue) {
 	p.dx = dx; p.dy = dy;
 	p.hue = hue;
 	sockets[p.id].emit('newState',p.x,p.y,p.dx,p.dy,p.hue);
+}
+
+function clearEntireBoard() {
+	for (var i=1;i<board.W-1;i++) {
+		for (var j=1;j<board.H-1;j++) {
+			board.blockId[i][j] = B_EMPTY;
+		}
+	}
+}
+
+function teleportPlayer(player,x,y,cd) {
+	player.x = x;
+	player.y = y;
+	player.lastX = Math.round(x);
+	player.lastY = Math.round(y);
+			
+	triggerCooldown(player, cd);
+	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
+	clearAroundPoint(player.x,player.y,r);
+	
+	if(player.specialAbility && player.specialAbility.onTeleportLanding)
+		player.specialAbility.onTeleportLanding(player.x,player.y,player);
 }

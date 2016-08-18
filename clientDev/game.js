@@ -20,6 +20,7 @@ Game.prototype.handleNetwork = function(socket) {
 		player = newPlayer;
 		player.name = playerName; // in case myNameIs hasn't registered yet
 		player.size = 0;
+		player.cdTimer = player.cooldown;
 		gameOver = false;
 		gameObjects = []; // clear all objects
 		tick();
@@ -44,6 +45,7 @@ Game.prototype.handleNetwork = function(socket) {
 	});
 	
 	socket.on('trCd', function (cd) {
+		player.cdTimer = cd;
 		player.cooldown = cd;
 	});
 	
@@ -112,7 +114,8 @@ Game.prototype.handleNetwork = function(socket) {
 		displayLeaderBoard(leaderBoard);
 	});	
 	
-	socket.on('newAbility', function (description) {
+	socket.on('newAbility', function (description, flag) {
+		teleportOverride = flag;
 		document.getElementById('powerups').innerHTML = description;
 	});
 	
@@ -259,7 +262,7 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.lineTo(ex,ey);
 		gfx.stroke();
 		
-		ex = bx + (ex-bx)*(1 - (player.cooldown / player.maxCooldown));
+		ex = bx + (ex-bx)*(1 - (player.cooldown / player.cdTimer));
 		gfx.strokeStyle = '#fff';
 		gfx.lineWidth = 8;
 		gfx.beginPath();
@@ -270,6 +273,8 @@ Game.prototype.handleGraphics = function(gfx) {
 	
 	// draw teleport target
 	if(spaceDown) {
+		if(player.dx == player.dy)
+			player.dy = 0;
 		var tx = player.x + player.dx * player.teleportDist;
 		var ty = player.y + player.dy * player.teleportDist;
 		var coords = boardToScreen(tx,ty,true);
@@ -321,6 +326,7 @@ function initBoard(H,W,LOS){
 var gameOver = false;
 var queue = 0, queueMax = 0;
 var deathMessage = '';
+var teleportOverride = false; // flags weather to trigger teleport or not
 
 //
 /** Game drawing constants **/
@@ -738,22 +744,28 @@ function drawArrow(gfx, x0, y0, x1, y1, color, isDashed) {
 
 function useAbility() {
 	if(player && player.cooldown == 0) {
-		var tx = Math.round(player.x + player.dx * player.teleportDist);
-		var ty = Math.round(player.y + player.dy * player.teleportDist);
-		
-		if((player.dx != 0 && tx > 1 && tx < board.W-2) || (player.dy != 0 && ty > 1 && ty < board.H-2)) {
-			player.x = tx;
-			player.y = ty;
-			socket.emit('teleport',tx, ty, player.dx, player.dy);
-			// TODO: draw a big red circle (explosion) on land
-			triggerCooldown(player);
-			clearFutureTurns(); // this is necessary, otherwise player goes nuts
+		if(teleportOverride){
+			socket.emit('teleport');
+			return;
+		} else {
+			var tx = Math.round(player.x + player.dx * player.teleportDist);
+			var ty = Math.round(player.y + player.dy * player.teleportDist);
+			
+			if((player.dx != 0 && tx > 1 && tx < board.W-2) || (player.dy != 0 && ty > 1 && ty < board.H-2)) {
+				player.x = tx;
+				player.y = ty;
+				socket.emit('teleport',tx, ty, player.dx, player.dy);
+				// TODO: draw a big red circle (explosion) on land
+				triggerCooldown(player);
+				clearFutureTurns(); // this is necessary, otherwise player goes nuts
+			}
 		}
 	}
 }
 
 function triggerCooldown(player) {
 	player.cooldown = player.maxCooldown;
+	player.cdTimer = player.maxCooldown;
 }
 
 function displayLeaderBoard(leaderboard) {
@@ -849,7 +861,10 @@ function directionDown(event) {
 	} else if (KEY_UP.includes(key)) {
 		applyKeyboardDirectionLogic(KEY_UP[0]);
 	} else if(key == KEY_SPACE) {
-		spaceDown = true;
+		if(!teleportOverride)
+			spaceDown = true;
+		else
+			spaceDown = false;
 	}
 }
 
