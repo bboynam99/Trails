@@ -345,11 +345,13 @@ function movePlayer(p, dt) {
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
+		var isUnvisitedPosition = false;
 		if (board.blockId[x][y] == B_EMPTY) {
 			board.blockId[x][y] = p.blocId * -1; // spawn "phantom" trail
 			board.blockTs[x][y] = lastUpdate;
+			isUnvisitedPosition = true;
 		}
-		afterInterpolationMove(x,y,p);
+		afterInterpolationMove(x,y,p,isUnvisitedPosition);
 	}
 }
 
@@ -380,7 +382,7 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 	}
 }
 
-function afterInterpolationMove(x,y,p) {
+function afterInterpolationMove(x,y,p,isUnvisitedPosition) {
 	// check for powerups pickup
 	var s = Math.floor(p.bonusSizeCache);
 	
@@ -401,10 +403,11 @@ function afterInterpolationMove(x,y,p) {
 		
 
 	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
-	dilation(x,y,p,p.blocId * -1);
-	
-	if(p.specialAbility && p.specialAbility.onChangePosition)
-		p.specialAbility.onChangePosition(x,y,p);
+	if(isUnvisitedPosition){
+		dilation(x,y,p,p.blocId * -1);
+		if(p.specialAbility && p.specialAbility.onChangePosition)
+			p.specialAbility.onChangePosition(x,y,p);
+	}
 }
 
 function beforeConfirmedMove(x,y,p) {
