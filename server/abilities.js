@@ -299,7 +299,7 @@ var abilities = [
 			
 		}
 	},
-		{
+	{
 		name: 'Black Hole',
 		description: 'Before teleporting, drop a black hole, attracting nearby players for a few seconds. Increases the cooldown.',
 		recipe: [0,2,0,0,2,0], // purple, yellow, blue, green, red, orange
@@ -308,6 +308,20 @@ var abilities = [
 		},
 		afterCacheStatsLogic: function(p) {
 			p.maxCooldown = 20;
+		}
+	},
+	{
+		name: 'Laser Beam',
+		description: 'Trigger a laser beam that clears an entire line, eliminating players in the process (15s cd). Replaces teleport.',
+		recipe: [0,4,0,0,0,0], // purple, yellow, blue, green, red, orange
+		onTeleportLanding: function(x,y,p,ox,oy) {
+			if(p.dx != 0)
+				objects.createLaser(p,true,y,1,2.25);
+			else
+				objects.createLaser(p,false,x,1,2.25);
+		},
+		afterCacheStatsLogic: function(p) {
+			p.maxCooldown = 15;
 		}
 	}
 ];

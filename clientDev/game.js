@@ -9,7 +9,7 @@ Game.prototype.handleNetwork = function(socket) {
 	var c = document.getElementById('cvs');
 	c.width = screenWidth; c.height = screenHeight;
 	bindKeyboard(c);
-	//bindClickTap(c);
+	bindClickTap(c);
 	
 	// this is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, b) {
@@ -27,12 +27,11 @@ Game.prototype.handleNetwork = function(socket) {
 		socket.emit('myNameIs', playerName);
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
-			type: 1,
-			fromP: player.id,
-			toP: player.id,
-			exp: 5,
-			dt: 0,
-			skin: 3
+			type: 3,
+			dt:0,
+			isH: false,
+			from: 14,to: 16,
+			exp: 2.25
 		});*/
 
 	});
@@ -567,7 +566,7 @@ function drawBoard(gfx){
 	}
 }
 function updateGameObjects(dt) {
-	for(var i=gameObjects.length-1;i>=0;i--){
+	for(var i=gameObjects.length-1;i>=0;i--) {
 		var l = gameObjects[i];
 		switch(l.type){
 			case 1: // Link
@@ -575,7 +574,7 @@ function updateGameObjects(dt) {
 				if(l.dt >= l.exp)
 					gameObjects.splice(i, 1);
 				break;
-			case 2: // Link
+			case 2: // Black hole
 				l.dt += dt;
 				if(l.dt >= l.exp)
 					gameObjects.splice(i, 1);
@@ -589,6 +588,11 @@ function updateGameObjects(dt) {
 					player.x += dx/dist * mag * dt;
 					player.y += dy/dist * mag * dt;
 				}
+				break;
+			case 3: // laser
+				l.dt += dt;
+				if(l.dt >= l.exp + LASER_PHASE3)
+					gameObjects.splice(i, 1);
 				break;
 		}
 	}
@@ -654,7 +658,7 @@ function drawGameObjects(gfx) {
 							y1 = B.y + (A.y - B.y) * progress;
 						var e = boardToScreen(x1,y1,true);
 						//var s = [0,0], e = [screenWidth * progress,screenHeight * progress];
-						drawArrow(gfx, s[0], s[1], e[0], e[1]);
+						drawArrow(gfx, l.dt, s[0], s[1], e[0], e[1]);
 						break;
 					case 3: // full line with a skull
 						var s = boardToScreen(A.x,A.y,true);
@@ -688,10 +692,82 @@ function drawGameObjects(gfx) {
 				var p = boardToScreen(l.x,l.y,true);
 				drawBlkHl(gfx,p[0],p[1],0.35*l.r * BLOCK_TO_PIXELS,l.dt);
 				break;// end of BLACK HOLE
+			case 3: // Laser
+				if(l.isH) {
+					var s = boardToScreen(0,l.from,true);
+					var e = boardToScreen(0,l.to,true);
+					drawLaser(gfx,l.dt,l.exp,true,s[1]-HALF_BLOCK_SIZE_DISPLAY,e[1]+HALF_BLOCK_SIZE_DISPLAY);
+				} else {
+					var s = boardToScreen(l.from,0,false);
+					var e = boardToScreen(l.to,0,true);
+					drawLaser(gfx,l.dt,l.exp,false,s[0]-HALF_BLOCK_SIZE_DISPLAY,e[0]+HALF_BLOCK_SIZE_DISPLAY);
+				}
+				break;// end of Laser
 		}
 		
 	});
 }
+
+const LASER_PHASE1 = .33; // realive time of part1 of the animation
+const LASER_PHASE2 = .67; // relative time of part2
+const LASER_PHASE3 = 1.0; // absolute time in seconds for part3
+function drawLaser(gfx, time,duration,isHorizontal, from, to) {
+	// PHASE2
+	progression = time/duration;
+	if(progression > LASER_PHASE1) {
+		gfx.fillStyle = 'hsl(0, 100%, '+(95-Math.round(Math.min(45,45*Math.min(1,(progression-LASER_PHASE1)/LASER_PHASE2))))+'%)';
+		if(isHorizontal)
+			gfx.fillRect(0, from, screenWidth, Math.abs(to - from));
+		else
+			gfx.fillRect(from, 0, Math.abs(to - from), screenHeight);
+	}
+	
+	// PHASE1
+	gfx.lineWidth = 5;
+	gfx.strokeStyle = '#F00';
+	var middle = from + Math.abs(to - from)/2
+	var dd = Math.abs(to - from)/2 * Math.min(1,progression/LASER_PHASE1);
+	console.log(isHorizontal);
+	gfx.beginPath();
+	if(isHorizontal) {
+		gfx.moveTo(0,middle+dd);
+		gfx.lineTo(screenWidth,middle+dd);
+		gfx.moveTo(0,middle-dd);
+		gfx.lineTo(screenWidth,middle-dd);
+	} else {
+		gfx.moveTo(middle+dd,0);
+		gfx.lineTo(middle+dd,screenHeight);
+		gfx.moveTo(middle-dd,0);
+		gfx.lineTo(middle-dd,screenHeight);
+	}
+	gfx.stroke();
+	
+	// PHASE3
+	if(progression >= 1.0) {
+		const N = 20;
+		var colors = ['#800','#f93','#ff0'];
+		for (c=0;c<colors.length;c++) {
+			gfx.strokeStyle = colors[c];
+			gfx.lineWidth = c+1;
+			gfx.beginPath();
+			if(isHorizontal) {
+				gfx.moveTo(0,middle);
+				for(var i=screenWidth/N; i<=screenWidth; i+=screenWidth/N) {
+					var delta = getRandomInt(-5*dd, 5*dd) * ((screenWidth/2-Math.abs(i - screenWidth/2))/screenWidth);
+					gfx.lineTo(i,middle+delta);
+				}
+			} else {
+				gfx.moveTo(middle,0);
+				for(var i=screenHeight/N; i<=screenHeight; i+=screenHeight/N) {
+					var delta = getRandomInt(-5*dd, 5*dd) * ((screenHeight/2-Math.abs(i - screenHeight/2))/screenHeight);
+					gfx.lineTo(middle+delta,i);
+				}
+			}
+			gfx.stroke();
+		}
+	}
+}
+
 var PI2 = Math.PI/2;
 function drawBlkHl(gfx,x,y,r,dt){
 	// draw center part
@@ -709,7 +785,7 @@ function drawBlkHl(gfx,x,y,r,dt){
 	gfx.beginPath();
 	gfx.arc(x,y,.7*r,0,2*Math.PI);
 	gfx.fill();
-	//
+
 	gfx.lineWidth = 5; 
 	gfx.strokeStyle = '#333';
 	var phi = 2*Math.PI * dt * 0.075;
@@ -720,11 +796,6 @@ function drawBlkHl(gfx,x,y,r,dt){
 		gfx.arc(cx,cy,r,0+theta, 1.15*PI2 + theta);
 		gfx.stroke();
 	}
-	//phi += Math.PI / 180; // .25 deg per frame
-	/*canvas.beginPath();
-	canvas.arc(cx - r/G,cy,r*G,3*PI2 + theta,0 + theta);
-	canvas.stroke();*/
-	//theta += Math.PI * 0.2;
 }
 
 var skullScaleOff = 0;
@@ -756,8 +827,7 @@ function drawSkull(gfx, scale, x, y) {
 	gfx.stroke();
 }
 
-var off = 1; // TODO: this should be tied to the link itself.
-function drawArrow(gfx, x0, y0, x1, y1, color, isDashed) {
+function drawArrow(gfx, dt, x0, y0, x1, y1, color, isDashed) {
 	 //variables to be used when creating the arrow
 	var headlen = 10;
 	var angle = Math.atan2(y1-y0,x1-x0);
@@ -766,7 +836,7 @@ function drawArrow(gfx, x0, y0, x1, y1, color, isDashed) {
 	gfx.moveTo(x0, y0);
 	gfx.lineTo(x1, y1);
 	gfx.setLineDash([5, 15]);
-	gfx.lineDashOffset = off; off =  (off + 3) % 100;
+	gfx.lineDashOffset = Math.round(dt * 30);
 	gfx.strokeStyle = "#cc0000";
 	gfx.lineWidth = 5;
 	gfx.stroke();
@@ -858,7 +928,7 @@ var KEY_LEFT = [37,65];
 var KEY_UP = [38,87];
 var KEY_RIGHT = [39,68];
 var KEY_DOWN = [40,83];
-var KEY_SPACE = [32];
+var KEY_SPACE = 32;
 var NO_KEY = -1;
 
 var TAP_CENTER_REL_DIST = 0.05;
@@ -903,13 +973,13 @@ var lastDirectionPressed = NO_KEY;
 var comboDirectionPressed = NO_KEY;
 function directionDown(event) {
 	var key = event.which || event.keyCode;
-	if (KEY_DOWN.includes(key)) {
+	if (KEY_DOWN[0] == key || KEY_DOWN[1] == key) {
 		applyKeyboardDirectionLogic(KEY_DOWN[0]);
-	} else if (KEY_LEFT.includes(key)) {
+	} else if (KEY_LEFT[0] == key || KEY_LEFT[1] == key) {
 		applyKeyboardDirectionLogic(KEY_LEFT[0]);
-	} else if (KEY_RIGHT.includes(key)) {
+	} else if (KEY_RIGHT[0] == key || KEY_RIGHT[1] == key) {
 		applyKeyboardDirectionLogic(KEY_RIGHT[0]);
-	} else if (KEY_UP.includes(key)) {
+	} else if (KEY_UP[0] == key || KEY_UP[1] == key) {
 		applyKeyboardDirectionLogic(KEY_UP[0]);
 	} else if(key == KEY_SPACE) {
 		if(!teleportOverride)

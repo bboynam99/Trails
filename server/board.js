@@ -176,8 +176,11 @@ function teleportPlayer(player,x,y,cd) {
 	var originalX = Math.round(player.x), originalY = Math.round(player.y);
 	player.x = x;
 	player.y = y;
+	playerBoard[player.lastX][player.lastY] = null; // update player position LUT
 	player.lastX = Math.round(x);
 	player.lastY = Math.round(y);
+	playerBoard[player.lastX][player.lastY] = player;
+				
 	
 	if(player.specialAbility && player.specialAbility.teleportLandingOverride){
 		player.specialAbility.teleportLandingOverride(player);

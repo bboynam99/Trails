@@ -4,10 +4,11 @@ var b = require('./board.js');
 	
 module.exports = {
 	createLink,
-	createBlackHole
+	createBlackHole,
+	createLaser
 };
 
-var LINK_ID=1, BKHL_ID=2;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -122,14 +123,12 @@ function createBlackHole(x,y,duration) {
 }
 
 const BLKHL_RADIUS = 20, BLKHL_STR = 7;
-function updateBlackHole(obj, dt){
+function updateBlackHole(obj, dt) {
 	obj.data.dt += dt;
-	//console.log('link time is now :' + obj.data.dt + ' of ' + obj.data.exp);
 	if(obj.data.dt >= obj.data.exp) { // link expired
 		removeObject(obj);
 		// TODO: align every player's X and Y
-		//console.log('Link completed!');
-	} else{
+	} else {
 		users.forEach(function(p) {
 			if(!p.isDead) {
 				var dx = (obj.data.x - p.x);
@@ -152,5 +151,68 @@ function toClientBlackhole(bh){
 		exp: bh.data.exp,
 		r: BLKHL_RADIUS,
 		str: BLKHL_STR
+	};
+}
+
+//
+// Laser
+//
+function createLaser(player, isHorizontal,axisPosition,paddingSize,chargeTime) {
+	var newLaser = {
+		type: LZR_ID,
+		update: updateLaser,
+		isVisibleByPlayer: function(){return true;}, // always globally visible.
+		data: {
+			caster: player,
+			isH: isHorizontal,
+			from: Math.max(0,Math.min((isHorizontal?BOARD_W:BOARD_H),axisPosition-paddingSize)),
+			to:Math.max(0,Math.min((isHorizontal?BOARD_W:BOARD_H),axisPosition+paddingSize)),
+			dt: 0,
+			exp: chargeTime
+		},
+		toPlayerObject: toClientLaser
+	};
+	gameObjects.push(newLaser);
+	sendNewObject(newLaser);
+}
+
+function updateLaser(obj, dt) {
+	obj.data.dt += dt;
+	//console.log('link time is now :' + obj.data.dt + ' of ' + obj.data.exp);
+	if(obj.data.dt >= obj.data.exp) { // link expired
+		// clear board and players
+		
+		var X0,X1,Y0,Y1;
+		if(obj.data.isH) {
+			X0 = 1; X1 = board.W-2;
+			Y0 = obj.data.from; Y1 = obj.data.to;
+		} else {
+			X0 = obj.data.from; X1 = obj.data.to;
+			Y0 = 1; Y1 = board.H-2;
+		}
+		for (var i=X0;i<=X1;i++) {
+			for (var j=Y0;j<=Y1;j++) {
+				if(board.blockId[i][i] != B_BORDERS) {
+					board.blockId[i][j] = B_EMPTY;
+				}
+				if(playerBoard[i][j] != null && playerBoard[i][j] != obj.data.caster && !playerBoard[i][j].isDead) {
+					//console.log('found player '+playerBoard[i][j].name+' at position ('+i+','+j+') when searching in ('+X0+':'+X1+','+Y0+':'+Y1+')');
+					b.hasCrashedInto(obj.data.caster, playerBoard[i][j], 'You were eliminated by ' + obj.data.caster.name + '\'s power up ability.');
+				}
+			}
+		}
+		
+		// remove obj
+		removeObject(obj);
+	}
+}
+
+function toClientLaser(lzr){
+	return {
+		type: lzr.type,
+		isH: lzr.data.isH,
+		from: lzr.data.from,
+		to: lzr.data.to,
+		exp: lzr.data.exp
 	};
 }
