@@ -102,7 +102,7 @@ io.on('connection', function (socket) {
 				playerBoard[nx][ny] = player;
 				player.lastX = nx;
 				player.lastY = ny;
-				replayLine(x, y, nx, ny, player.blocId, player);
+				replayLine(x, y, nx, ny, player);
 				//dilation(nx,ny,player,player.blocId); // this avoids a drawing glitch when turning quickly
 			}
 		}
@@ -355,7 +355,7 @@ function movePlayer(p, dt) {
 	}
 }
 
-function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and possibly kills p)
+function replayLine(x0, y0, x1, y1, p) { //also checks for collision (and possibly kills p)
 	try {
 		var now = Date.now();
 		var dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
@@ -364,7 +364,7 @@ function replayLine(x0, y0, x1, y1, v, p) { //also checks for collision (and pos
 		while((x0!=x1) || (y0!=y1)) {
 			beforeConfirmedMove(x0,y0,p);
 			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
-				board.blockId[x0][y0] = v;
+				board.blockId[x0][y0] = p.blockId;
 				board.blockTs[x0][y0] = now;
 				dilation(x0,y0,p,p.blocId);
 			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.blockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
