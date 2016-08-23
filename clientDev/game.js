@@ -118,9 +118,13 @@ Game.prototype.handleNetwork = function(socket) {
 		document.getElementById('powerups').innerHTML = description;
 	});
 	
-	socket.on('eliminatedPlayer', function () {
+	socket.on('eliminatedPlayer', function (name) {
 		lastFewBlocks = [];
-		lastFewBlocksId = 0; 
+		lastFewBlocksId = 0;
+		lastEliminations.push({
+			name: name,
+			ts: Date.now()
+		});
 	});
 	
 	socket.on('sync', function (x,y) {
@@ -184,8 +188,20 @@ Game.prototype.handleLogic = function() {
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
+	
 	// update game objects
 	updateGameObjects(dt);
+	
+	// update eliminated player
+	for(var i=lastEliminations.length-1;i>=0;i--) {
+		var ts = Date.now();
+		const KILL_DISPLAY_TIME = 3000;
+		if(ts - lastEliminations[i].ts > KILL_DISPLAY_TIME)
+			lastEliminations.splice(i,1);
+	}
+	
+	// update jitter effect for close call
+	checkCloseCall();
 }
 
 Game.prototype.handleGraphics = function(gfx) {	
@@ -237,7 +253,8 @@ Game.prototype.handleGraphics = function(gfx) {
 	gfx.fillRect(cx - los, cy - los, 2*los, 2*los);
 
 	// draw board
-	drawBoard(gfx);
+	var offsetJitter = isCloseCall ? getRandomInt(-10,10) : 0;
+	drawBoard(gfx,offsetJitter);
 	
 	// draw players
 	drawPlayer(gfx, player);
@@ -286,6 +303,25 @@ Game.prototype.handleGraphics = function(gfx) {
 			gfx.lineTo(coords[0]-HALF_BLOCK_SIZE_DISPLAY,coords[1]+HALF_BLOCK_SIZE_DISPLAY);
 		gfx.stroke();
 	}
+	
+	// draw player elimination
+	var offset = 0;
+	lastEliminations.forEach(function(o) {
+		gfx.fillStyle = '#2ecc71';
+		gfx.strokeStyle = '#27ae60';
+		gfx.font = 'bold 22px Verdana';
+		gfx.textAlign = 'right';
+		gfx.lineWidth = 2;
+		gfx.fillText('Eliminated ', screenWidth * 0.5, screenHeight * 0.65 + offset);
+		gfx.strokeText('Eliminated ', screenWidth * 0.5, screenHeight * 0.65 + offset);
+		gfx.textAlign = 'left';
+		gfx.fillStyle = '#FF2424';
+		gfx.strokeStyle = '#ffacac';
+		gfx.fillText(o.name, screenWidth * 0.5, screenHeight * 0.65 + offset);
+		gfx.strokeText(o.name, screenWidth * 0.5, screenHeight * 0.65 + offset);
+		
+		offset += 25;
+	});
 }
 
 //
@@ -306,6 +342,7 @@ var lastFewBlocks = []; //client will always trust itself for board state of the
 var lastFewBlocksId = 0; var FEW_BLOCKS_LENGTH = 10;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 var updateSize = [];
+var lastEliminations = [];
 function initBoard(H,W,LOS){
 	// Board
 	board.W = W;
@@ -427,6 +464,26 @@ function movePlayer(p, dt) {
 	}
 	return value;
 }
+
+var isCloseCall=false; // this variable is set true if the player is in a position where he should die. The server tolerates close calls, so we give visual feedback instead.
+function checkCloseCall() {
+	isCloseCall = false;
+	if(!otherPlayers || otherPlayers.length == 0)
+		return;
+	otherPlayers.forEach(function(o) {
+		if(isCloseCall)
+			return;
+		var dx = Math.abs(o.x - player.x), dy = Math.abs(o.y - player.y);
+		if (dx + dy < 1){
+			isCloseCall = true;
+			return;
+		}
+		if(dx + dy < 3 && ((dx < 0.5) ^ (dy < 0.5)) && o.dx == player.dx && o.dy == player.dy) {
+			isCloseCall = true;
+			return;
+		}
+	});
+}
 //
 /** Display helpers **/
 //
@@ -509,7 +566,7 @@ function dilation(x,y,s,v) {
 	}
 }
 
-function drawBoard(gfx){
+function drawBoard(gfx,offsetJitter){
 	// figure out how much can be seen by the player
 	LosW = screenWidth / 2 / BLOCK_TO_PIXELS;
 	LosH = screenHeight / 2 / BLOCK_TO_PIXELS;
@@ -533,7 +590,7 @@ function drawBoard(gfx){
 		}
 		
 		var pad = HALF_BLOCK_SIZE_DISPLAY*2;
-		var sY=0, sX = Math.round(BLOCK_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 ) - HALF_BLOCK_SIZE_DISPLAY;
+		var sY=offsetJitter, sX = offsetJitter + Math.round(BLOCK_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 ) - HALF_BLOCK_SIZE_DISPLAY;
 		for (var i=LosX0;i<=LosX1;i++) {
 			sY = Math.round(BLOCK_TO_PIXELS*(LosY0 - player.y) + screenHeight /2 ) - HALF_BLOCK_SIZE_DISPLAY;
 			for (var j=LosY0;j<=LosY1;j++) {

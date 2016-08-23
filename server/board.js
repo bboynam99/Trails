@@ -121,7 +121,7 @@ function hasCrashedInto(crashee, crasher, customMsg) {
 	if(!customMsg)
 		customMsg = 'You were eliminated by ' + crashee.name + '.';
 	killPlayer(crasher, ' was eliminated by ' + crashee.name, customMsg);
-	sockets[crashee.id].emit('eliminatedPlayer');
+	sockets[crashee.id].emit('eliminatedPlayer', crasher.name);
 }
 
 function killPlayer(p, reason, message) {
