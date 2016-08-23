@@ -63,3 +63,46 @@ blue-orange		Stealing Ray: After teleporting, channel a ray in attempt to steal 
 yellow-orange	Entrenchment: Clear everything in a large area around you, surrounding you with a thin wall. Replaces teleport.
 
 
+
+
+Doomsday Device Brain Storming:
+
+DoomsDay game object:
+
+player.phaseObject = [];
+{
+	ID,
+	TYPE,
+	interpolationMoveOverride(x,y,p) = function(player),
+	replayLineOverride(x0, y0, x1, y1, p) = function(player),
+}
+
+Board function changePhase(player, phase) {
+	if(player.phase != phase) {
+		player.phase = phase;
+		socket[player.Id].emit('newPhase',phaseType, phaseId)
+	}
+}
+
+DoomsDayPhase (game object):
+ - applies to all unphase players alive
+ - end condition (in update) depends on number of unphased players
+ - cannot die from walls (no movement logic)
+ - interpolationMoveOverride AND replayLineOverride: does not create walls, check for safe spots
+
+TODO: find solution for board updates, dbl check update logic (and end logic)
+
+createLogic:
+	define end condition - More than 1 non-doomsday'd player on the map? kill condition = 0 player left (no one dies) otherwise DoomsDay=1;
+	define Special Green safe spots appear on the map.
+Update: check for end (only 1 player left).
+socket.emit(requestUndoomsDay)
+
+
+sendBoardUpdates:
+Only get updates from players that are "in the same phase", cannot use power ups or any abilities.
+
+Client side:
+black/grey flashing background, only display special "green blocs.
+
+As soon as the player picks up a green bloc. the area is cleared, and the player phases back
