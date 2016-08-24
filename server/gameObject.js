@@ -90,8 +90,8 @@ function updateLinks(obj, dt) {
 function toClientLink(link) {
 	return {
 		type: link.type,
-		fromP: link.data.fromP.blocId,
-		toP: link.data.toP.blocId,
+		fromP: link.data.fromP.blockId,
+		toP: link.data.toP.blockId,
 		exp: link.data.exp,
 		skin: link.data.skin
 	};

@@ -46,7 +46,7 @@ var abilities = [
 				if(board.isPowerUp[x][y] != PU_ID_NONE) {
 					var id = board.isPowerUp[x][y];
 					board.isPowerUp[x][y] = PU_ID_NONE;
-					b.numPowerUpsOnBoard--;
+					board.numPowerUpsOnBoard--;
 				}
 			});
 		}
@@ -73,7 +73,7 @@ var abilities = [
 		},
 		onLinkComplete: function(A,B) {
 			A.hue = B.hue;
-			board.colorsLUT[A.blocId] = A.hue;
+			board.colorsLUT[A.blockId] = A.hue;
 			sockets[A.id].emit('newHue', A.hue);
 		}
 	},
@@ -137,8 +137,8 @@ var abilities = [
 			};
 			b.newState(A,B.x,B.y,B.dx,B.dy,B.hue);
 			b.newState(B,tmp.x,tmp.y,tmp.dx,tmp.dy,tmp.hue);
-			board.colorsLUT[A.blocId] = A.hue;
-			board.colorsLUT[B.blocId] = B.hue;
+			board.colorsLUT[A.blockId] = A.hue;
+			board.colorsLUT[B.blockId] = B.hue;
 		}
 	},
 	{
@@ -210,7 +210,7 @@ var abilities = [
 			b.applyLogicAroundPosition(p.x,p.y,ENTRCH_RADIUS, function(i,j,result,dist2) {
 				if(board.blockId[i][j] != B_BORDERS) {
 					if(ENTRCH_RADIUS - Math.sqrt(dist2) <= 1.35) {
-						board.blockId[i][j] = p.blocId;
+						board.blockId[i][j] = p.blockId;
 						board.blockTs[i][j] = now;
 					} else {
 						board.blockId[i][j] = B_EMPTY;

@@ -15,7 +15,7 @@ var abilities = abilityManager.abilities;
 /** Game variables **/
 //
 global.users = []; // players and their data
-var blocIdGenerator = 11;
+var blockIdGenerator = 11;
 
 //
 /** Socket communication (game events) **/
@@ -48,16 +48,16 @@ io.on('connection', function (socket) {
 		hue: getUnusedColor(),
 		lastHeartbeat: 0,
 		name: '',
-		blocId: blocIdGenerator,
+		blockId: blockIdGenerator,
 		desyncCounter: 0, // the cumulated delta between client and server
 		lastSlotFilled: 0,
 		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
 		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
 		specialAbility: undefined
 	};
-	board.colorsLUT[player.blocId] = player.hue;
-	blocIdLUT[blocIdGenerator] = player;
-	blocIdGenerator++;
+	board.colorsLUT[player.blockId] = player.hue;
+	blockIdLUT[blockIdGenerator] = player;
+	blockIdGenerator++;
 	
 	users.push(player);
 	
@@ -103,7 +103,7 @@ io.on('connection', function (socket) {
 				player.lastX = nx;
 				player.lastY = ny;
 				replayLine(x, y, nx, ny, player);
-				//dilation(nx,ny,player,player.blocId); // this avoids a drawing glitch when turning quickly
+				//dilation(nx,ny,player,player.blockId); // this avoids a drawing glitch when turning quickly
 			}
 		}
 	});
@@ -111,7 +111,7 @@ io.on('connection', function (socket) {
 	socket.on('disconnect', function () {
 		b.killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
 		delete sockets[player.id];
-		delete board.colorsLUT[player.blocId];
+		delete board.colorsLUT[player.blockId];
 		var index = users.indexOf(player);
 		if (index > -1){
             users.splice(index, 1);
@@ -152,11 +152,11 @@ io.on('connection', function (socket) {
 //set spawning logic
 spawningQueue.setSpawnLogic(function(p) {
 	p.hue = getUnusedColor(); // player is no longer part of any other hue groups!
-	board.colorsLUT[p.blocId] = p.hue;
+	board.colorsLUT[p.blockId] = p.hue;
 	p.isDead = false;
 	p.lastHeartbeat = Date.now();
 	sockets[p.id].emit('playerSpawn',{ // the player data
-		id: p.blocId,
+		id: p.blockId,
 		x: p.x,
 		y: p.y,
 		dx:p.dx,
@@ -246,7 +246,7 @@ function sendUpdatesBoard() {
 						// this is for board and colors
 						var id = board.blockId[i+losX0][j+losY0];
 						newBoard.blockId[i][j] = EMPTY_BLOCK;
-						var c = blocIdLUT[Math.abs(id)];
+						var c = blockIdLUT[Math.abs(id)];
 						if(c) {
 							newBoard.blockId[i][j] = c.hue;
 							colors[c.hue] = true;
@@ -287,7 +287,7 @@ function sendUpdatesPlayers() {
 						o = playerBoard[i+losX0][j+losY0];
 						if(!o.isDead && o.id != u.id) {
 							otherPlayers.push({
-								id: o.blocId,
+								id: o.blockId,
 								x: o.x,
 								y: o.y,
 								dx:o.dx,
@@ -347,7 +347,7 @@ function movePlayer(p, dt) {
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
 		var isUnvisitedPosition = false;
 		if (board.blockId[x][y] == B_EMPTY) {
-			board.blockId[x][y] = p.blocId * -1; // spawn "phantom" trail
+			board.blockId[x][y] = p.blockId * -1; // spawn "phantom" trail
 			board.blockTs[x][y] = lastUpdate;
 			isUnvisitedPosition = true;
 		}
@@ -363,15 +363,15 @@ function replayLine(x0, y0, x1, y1, p) { //also checks for collision (and possib
 		
 		while((x0!=x1) || (y0!=y1)) {
 			beforeConfirmedMove(x0,y0,p);
-			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blocId * -1)) { // fill empty cells or "phantom" trail from interpolation
+			if(board.blockId[x0][y0] == B_EMPTY || board.blockId[x0][y0] == (p.blockId * -1)) { // fill empty cells or "phantom" trail from interpolation
 				board.blockId[x0][y0] = p.blockId;
 				board.blockTs[x0][y0] = now;
-				dilation(x0,y0,p,p.blocId);
+				dilation(x0,y0,p,p.blockId);
 			} else if(p && board.colorsLUT[board.blockId[x0][y0]] != p.hue && board.blockId[x0][y0] > B_KILLSYOUTHRESHOLD && now - board.blockTs[x0][y0] >= WALL_SOLIDIFICATION) { // kill if needed
 				if(p.specialAbility && p.specialAbility.onPlayerWallHit)
 					if(p.specialAbility.onPlayerWallHit(x0,y0,p))
 						break;
-				b.hasCrashedInto(blocIdLUT[board.blockId[x0][y0]], p);
+				b.hasCrashedInto(blockIdLUT[board.blockId[x0][y0]], p);
 				break; // weather he died or not, we still stop drawing the line (this could change in the future with new abilities)
 			}
 			x0 += dx;
@@ -402,9 +402,9 @@ function afterInterpolationMove(x,y,p,isUnvisitedPosition) {
 	//catch(x){} // too lazy to check limits
 		
 
-	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blocId);
+	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blockId);
 	if(isUnvisitedPosition){
-		dilation(x,y,p,p.blocId * -1);
+		dilation(x,y,p,p.blockId * -1);
 		if(p.specialAbility && p.specialAbility.onChangePosition)
 			p.specialAbility.onChangePosition(x,y,p);
 	}

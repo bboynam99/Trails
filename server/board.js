@@ -46,7 +46,7 @@ for (var i=0;i<board.W;i++) {
 	}
 }
 
-global.blocIdLUT = {};
+global.blockIdLUT = {};
 
 //
 // A bunch of helper functions
@@ -113,7 +113,7 @@ function hasCrashedInto(crashee, crasher, customMsg) {
 	crashee.pts += crasher.pts * 0.35;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
-			if(Math.abs(board.blockId[i][j]) == crashee.blocId) {
+			if(Math.abs(board.blockId[i][j]) == crashee.blockId) {
 				board.blockId[i][j] = B_EMPTY;
 			}
 		}
@@ -147,7 +147,7 @@ function killPlayer(p, reason, message) {
 		p.desyncCounter = 0;
 		for (var i=1;i<board.W-1;i++) {
 			for (var j=1;j<board.H-1;j++) {
-				if(Math.abs(board.blockId[i][j]) == p.blocId) {
+				if(Math.abs(board.blockId[i][j]) == p.blockId) {
 					board.blockId[i][j] = B_EMPTY;
 				}
 			}
