@@ -53,7 +53,8 @@ io.on('connection', function (socket) {
 		lastSlotFilled: 0,
 		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
 		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
-		specialAbility: undefined
+		specialAbility: undefined,
+		phase: undefined
 	};
 	board.colorsLUT[player.blockId] = player.hue;
 	blockIdLUT[blockIdGenerator] = player;
