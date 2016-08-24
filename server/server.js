@@ -102,7 +102,11 @@ io.on('connection', function (socket) {
 				playerBoard[nx][ny] = player;
 				player.lastX = nx;
 				player.lastY = ny;
-				replayLine(x, y, nx, ny, player);
+				if(player.phase) { // in a different phase, the logic is custom.
+					player.phase.data.replayLineOverride(x, y, nx, ny, player);
+				} else {
+					replayLine(x, y, nx, ny, player); // default logic
+				}
 				//dilation(nx,ny,player,player.blockId); // this avoids a drawing glitch when turning quickly
 			}
 		}
@@ -215,17 +219,21 @@ function gameloop() {
 	});	
 }
 
+ // client side constants (proudly copy pasted)
 var EMPTY_BLOCK = -1;
-var SIDE_WALL = -2; // client side constants
+var SIDE_WALL = -2;
+var PHASE_EXIT = -3;
+
 function sendUpdatesBoard() {
 	users.forEach( function(u) {
 		if (!u.isDead) {
+			var boardToUse = u.phase?u.phase.data.board:board;
 			// update walls
 			var x = Math.round(u.x); var y = Math.round(u.y);
 			losX0 = Math.max(x - PLAYER_LOS_RANGE,0);
-			losX1 = Math.min(x + PLAYER_LOS_RANGE, board.W);
+			losX1 = Math.min(x + PLAYER_LOS_RANGE, boardToUse.W);
 			losY0 = Math.max(y - PLAYER_LOS_RANGE,0);
-			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H);
+			losY1 = Math.min(y + PLAYER_LOS_RANGE, boardToUse.H);
 			var newBoard = {
 				isBlock: null,
 				colors: null,
@@ -244,7 +252,7 @@ function sendUpdatesBoard() {
 					newBoard.isPowerUp[i] = new Array(losY1-losY0);
 					for (var j=0;j<losY1-losY0;j++) {
 						// this is for board and colors
-						var id = board.blockId[i+losX0][j+losY0];
+						var id = boardToUse.blockId[i+losX0][j+losY0];
 						newBoard.blockId[i][j] = EMPTY_BLOCK;
 						var c = blockIdLUT[Math.abs(id)];
 						if(c) {
@@ -252,9 +260,13 @@ function sendUpdatesBoard() {
 							colors[c.hue] = true;
 						} else if (id == B_BORDERS) {
 							newBoard.blockId[i][j] = SIDE_WALL;
+						} else if (id == DMSDY_EXIT) {
+							newBoard.blockId[i][j] = PHASE_EXIT;
 						}
+						
 						// this is for power ups
-						newBoard.isPowerUp[i][j] = board.isPowerUp[i+losX0][j+losY0];
+						if(boardToUse.isPowerUp)
+							newBoard.isPowerUp[i][j] = board.isPowerUp[i+losX0][j+losY0];
 					}
 				}
 				newBoard.colors = Object.keys(colors);
@@ -285,7 +297,7 @@ function sendUpdatesPlayers() {
 				for (var j=0;j<=losY1-losY0;j++) {
 					if(playerBoard[i+losX0][j+losY0]) {
 						o = playerBoard[i+losX0][j+losY0];
-						if(!o.isDead && o.id != u.id) {
+						if(!o.isDead && o.id != u.id && o.phase == u.phase) {
 							otherPlayers.push({
 								id: o.blockId,
 								x: o.x,
@@ -299,10 +311,6 @@ function sendUpdatesPlayers() {
 								dpts: o.dpts,
 								slots: o.slots
 							});
-							/*l = board.links[otherPlayers];
-							if(l && l.dt >= LINK_START) {
-								newLinks.push(toClientLink(l));
-							}*/
 						}
 					}
 				}
@@ -345,13 +353,17 @@ function movePlayer(p, dt) {
 	p.y += p.dy * p.velocity * dt;
 	var x = Math.round(p.x-p.dx*.5), y = Math.round(p.y-p.dy*.5);
 	if((x > 0 && y > 0 && x < board.W-1 && y < board.H-1)) {
-		var isUnvisitedPosition = false;
-		if (board.blockId[x][y] == B_EMPTY) {
-			board.blockId[x][y] = p.blockId * -1; // spawn "phantom" trail
-			board.blockTs[x][y] = lastUpdate;
-			isUnvisitedPosition = true;
+		if(p.phase) { // in a different phase, the logic is custom.
+			p.phase.data.interpolationMoveOverride(x,y,p);
+		} else {			
+			var isUnvisitedPosition = false;
+			if (board.blockId[x][y] == B_EMPTY) {
+				board.blockId[x][y] = p.blockId * -1; // spawn "phantom" trail
+				board.blockTs[x][y] = lastUpdate;
+				isUnvisitedPosition = true;
+			}	
+			afterInterpolationMove(x,y,p,isUnvisitedPosition);
 		}
-		afterInterpolationMove(x,y,p,isUnvisitedPosition);
 	}
 }
 

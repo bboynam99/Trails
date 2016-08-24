@@ -105,7 +105,6 @@ canvas {
     position: absolute;
     padding: 10px;
     font-size: 16.1px;
-    text-align: center;
 }
 
 .powerups {
@@ -114,6 +113,7 @@ canvas {
     bottom: 10px;
     left: 10px;
     font-weight: bold;
+	text-align: left;
 }
 
 .leaderboard {
@@ -122,6 +122,7 @@ canvas {
     top: 10px;
     right: 10px;
     font-weight: bold;
+	text-align: center;
 }
 
 .leaderboard h1 {

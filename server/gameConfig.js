@@ -21,6 +21,7 @@ global.MAX_DESYNC_TOLERENCE = 1.5; // the number of sec of desync tolerated befo
 global.PU_SLOTS = 4; // the number of powerups a player can carry at once
 // Flags for the bloc board state
 global.B_EMPTY = 0;
+global.DMSDY_EXIT = 1;
 global.B_BORDERS = 10;
 global.B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 // PowerUp flags

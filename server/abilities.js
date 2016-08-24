@@ -294,8 +294,8 @@ var abilities = [
 			A.slots = B.slots;
 			B.slots = Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0);
 			A.lastSlotFilled = 0; B.lastSlotFilled = 0;
-			b.aggregatePowerUp(A);
-			b.aggregatePowerUp(B);
+			aggregatePowerUp(A);
+			aggregatePowerUp(B);
 			
 		}
 	},
@@ -322,6 +322,22 @@ var abilities = [
 		},
 		afterCacheStatsLogic: function(p) {
 			p.maxCooldown = 15;
+		}
+	},
+	{
+		name: 'Doomsday Device',
+		description: 'Trigger a Doomsday clock. The last player to find shelter dies. This consumes your power ups in the process. Replaces teleport.',
+		recipe: [0,0,0,0,4,0], // purple, yellow, blue, green, red, orange
+		teleportOverride: function(p) {
+			objects.createDoomsdayPhase(p);
+			
+			b.triggerCooldown(p, 1);
+			sockets[p.id].emit('trCd', 1);
+			
+			p.slots = Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0);
+			p.lastSlotFilled = 0;
+			aggregatePowerUp(p);
+			
 		}
 	}
 ];

@@ -7,7 +7,9 @@ module.exports = {
 	killPlayer,
 	newState,
 	clearEntireBoard,
-	teleportPlayer
+	teleportPlayer,
+	changePhase,
+	unphase
 }
 
 global.board = { // game board
@@ -79,6 +81,10 @@ function findNearestPlayer(x,y,r,p){
 		
 		if(o != null && (o.isDead || o.id == p.id)) // ignore self and dead players
 			return result;
+			
+		
+		if(o.phase != p.phase)//ignore players in a different phase
+			return result;
 		
 		if(result == null) // ignore empty cells
 			return o;
@@ -110,6 +116,9 @@ function triggerCooldown(p,cd) {
 }
 
 function hasCrashedInto(crashee, crasher, customMsg) {
+	if(!crashee || crashee.isDead)
+		return;
+	
 	crashee.pts += crasher.pts * 0.35;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
@@ -134,6 +143,7 @@ function killPlayer(p, reason, message) {
 		p.cooldown = TELE_COOLDOWN;
 		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
 		p.bonusSizeCache = 0;
+		p.phase = null;
 		
 		for (var i=0;i<PU_SLOTS;i++)
 			p.slots[i] = PU_ID_NONE;
@@ -180,9 +190,8 @@ function teleportPlayer(player,x,y,cd) {
 	player.lastX = Math.round(x);
 	player.lastY = Math.round(y);
 	playerBoard[player.lastX][player.lastY] = player;
-				
 	
-	if(player.specialAbility && player.specialAbility.teleportLandingOverride){
+	if(player.specialAbility && player.specialAbility.teleportLandingOverride) {
 		player.specialAbility.teleportLandingOverride(player);
 		return;
 	}
@@ -193,4 +202,16 @@ function teleportPlayer(player,x,y,cd) {
 	
 	if(player.specialAbility && player.specialAbility.onTeleportLanding)
 		player.specialAbility.onTeleportLanding(player.x,player.y,player,originalX,originalY);
+}
+
+function changePhase(player, phase) {
+	if(player.phase != phase) {
+		player.phase = phase;
+		sockets[player.id].emit('newPhase',phase.type);
+	}
+}
+
+function unphase(player) {
+	player.phase = null;
+	sockets[player.id].emit('unphase');
 }

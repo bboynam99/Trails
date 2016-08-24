@@ -5,10 +5,11 @@ var b = require('./board.js');
 module.exports = {
 	createLink,
 	createBlackHole,
-	createLaser
+	createLaser,
+	createDoomsdayPhase
 };
 
-var LINK_ID=1, BKHL_ID=2; LZR_ID=3;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -195,7 +196,7 @@ function updateLaser(obj, dt) {
 				if(board.blockId[i][i] != B_BORDERS) {
 					board.blockId[i][j] = B_EMPTY;
 				}
-				if(playerBoard[i][j] != null && playerBoard[i][j] != obj.data.caster && !playerBoard[i][j].isDead) {
+				if(playerBoard[i][j] != null && playerBoard[i][j] != obj.data.caster && !obj.data.caster.isDead && !playerBoard[i][j].isDead) {
 					//console.log('found player '+playerBoard[i][j].name+' at position ('+i+','+j+') when searching in ('+X0+':'+X1+','+Y0+':'+Y1+')');
 					b.hasCrashedInto(obj.data.caster, playerBoard[i][j], 'You were eliminated by ' + obj.data.caster.name + '\'s power up ability.');
 				}
@@ -215,4 +216,99 @@ function toClientLaser(lzr){
 		to: lzr.data.to,
 		exp: lzr.data.exp
 	};
+}
+
+//
+// DoomsdayPhase
+//
+
+function createDoomsdayPhase(creator) {
+	var newDoomsDayPhase = {
+		type: DMSDY_ID,
+		update: updateDoomsdayPhase,
+		isVisibleByPlayer: function(player,phase){return }, // visible by unphased players
+		data: {
+			ID: getUniquePhaseId(),
+			interpolationMoveOverride: doomsdayInterpolationMove,
+			replayLineOverride: doomsdayReplayLine,
+			board: createDoomsdayPhaseMap(),
+			initialPlayerCount: 0,
+			creator: creator.id
+		},
+		toPlayerObject: toClientDmsdy
+	};
+	gameObjects.push(newDoomsDayPhase);
+	
+	users.forEach(function(player){
+		if(!player.isDead && player.phase == null) {
+			b.changePhase(player, newDoomsDayPhase)
+			newDoomsDayPhase.data.initialPlayerCount++;
+		}
+	});
+}
+
+function toClientDmsdy(obj) {
+	return {
+		type: obj.type
+	};
+}
+
+function updateDoomsdayPhase(obj) {
+	var inPhase = users.filter(function(p){ !p.isDead && p.phase == obj;});
+	if(obj.data.initialPlayerCount <= 1 && inPhase.length == 0) {
+		removeObject(obj);
+	} else if(obj.data.initialPlayerCount > 1 && inPhase.length == 1) {
+		//find creator (may have disconnected)
+		var creator = users.find(function(p){p.id == obj.data.creator});
+		if(creator && !creator.isDead) {
+			b.hasCrashedInto(creator, inPhase[0], 'You\'ve been blasted into pieces by ' + creator.name + ' \'s Doomsday device.');
+		} else {
+			b.killPlayer(inPhase[0], 'was the last one in the doomsday phase.', 'You\'ve been blasted into pieces by the Doomsday device.')
+		}
+		removeObject(obj);
+	}
+}
+
+function doomsdayInterpolationMove(x,y,p) {
+	//does not create walls, check for safe spots
+	if(p.phase.data.board.blockId[x][y] == DMSDY_EXIT) {
+		b.clearAroundPoint(x,y,10);
+		b.unphase(p);
+	}
+}
+
+function doomsdayReplayLine(x0, y0, x1, y1, p) {
+	//does not create walls
+	if(p.phase.data.board.blockId[x1][y1] == DMSDY_EXIT) {
+		b.clearAroundPoint(x1,y1,10);
+		b.unphase(p);
+	}
+}
+
+function createDoomsdayPhaseMap() {
+	var phaseBoard = {
+		H: BOARD_H,
+		W: BOARD_W,
+		blockId: null
+	}
+	
+	phaseBoard.blockId = new Array(phaseBoard.W);
+	for (var i=0;i<phaseBoard.W;i++) {
+		phaseBoard.blockId[i] = new Array(phaseBoard.H);
+		for (var j=0;j<phaseBoard.H;j++) {
+			phaseBoard.blockId[i][j] = B_EMPTY;
+			if(i == 0 || j == 0 || i == phaseBoard.W-1 || j == phaseBoard.H-1)
+				phaseBoard.blockId[i][j] = B_BORDERS;
+			else if(i % 55 == 0 && j % 55 == 0)
+				phaseBoard.blockId[i][j] = DMSDY_EXIT;
+			else if (Math.random() < 0.05)
+				phaseBoard.blockId[i][j] = B_BORDERS
+		}
+	}
+	return phaseBoard;
+}
+
+var phaseIdGenetator = 0;
+function getUniquePhaseId() {
+	return phaseIdGenetator++;
 }

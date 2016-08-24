@@ -51,7 +51,12 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('upBr', function (newBoard) {
 		for (var i=newBoard.x0;i<newBoard.x1;i++) {
 			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
-				board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
+				// power ups if there are some
+				if(newBoard.isPowerUp)
+					board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
+				else
+					board.isPowerUp[i][j] = 0;
+				// the board state
 				board.blockId[i][j] = newBoard.blockId[i-newBoard.x0][j-newBoard.y0]; 
 			}
 		}
@@ -103,6 +108,7 @@ Game.prototype.handleNetwork = function(socket) {
 		player.pts = 0;
 		otherPlayers = [];
 		deathMessage = message;
+		currentPhaseType = NO_PHASE;
 	});
 	
 	socket.on('newHue', function (v) {
@@ -151,6 +157,16 @@ Game.prototype.handleNetwork = function(socket) {
 	socket.on('newO', function (o) {
 		o.dt = 0;
 		gameObjects.push(o);
+	});
+	
+	socket.on('newPhase', function (type) {
+		currentPhaseType = type;
+		lastFewBlocks = [];
+		lastFewBlocksId = 0; 
+	});	
+	
+	socket.on('unphase', function () {
+		currentPhaseType = NO_PHASE;
 	});	
 }
 
@@ -244,11 +260,16 @@ Game.prototype.handleGraphics = function(gfx) {
 		return;
 	}
 	
+	
 	gfx.fillStyle = '#CCC';
 	gfx.fillRect(0, 0, screenWidth, screenHeight);
 	var cx = screenWidth / 2;
 	var cy = screenHeight / 2;
-	gfx.fillStyle = '#fbfcfc';
+	if(currentPhaseType == NO_PHASE)
+		gfx.fillStyle = '#fbfcfc';
+	else
+		gfx.fillStyle = '#300';
+		
 	var los = board.LOS * BLOCK_TO_PIXELS;
 	gfx.fillRect(cx - los, cy - los, 2*los, 2*los);
 
@@ -288,7 +309,7 @@ Game.prototype.handleGraphics = function(gfx) {
 	}
 	
 	// draw teleport target
-	if(spaceDown) {
+	if(spaceDown && currentPhaseType == NO_PHASE) {
 		if(player.dx == player.dy)
 			player.dy = 0;
 		var tx = player.x + player.dx * player.teleportDist;
@@ -339,7 +360,7 @@ var board = {
 var colors = []; // contains all colors to be drawn, received from server.
 var gameObjects = [];
 var lastFewBlocks = []; //client will always trust itself for board state of these pts
-var lastFewBlocksId = 0; var FEW_BLOCKS_LENGTH = 10;
+var lastFewBlocksId = 0; const FEW_BLOCKS_LENGTH = 10;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 var updateSize = [];
 var lastEliminations = [];
@@ -360,6 +381,8 @@ function initBoard(H,W,LOS){
 	}
 }
 var gameOver = false;
+const NO_PHASE = 0, DOOMSDAY=4;
+var currentPhaseType = NO_PHASE;
 var queue = 0, queueMax = 0;
 var deathMessage = '';
 var teleportOverride = false; // flags weather to trigger teleport or not
@@ -370,6 +393,7 @@ var teleportOverride = false; // flags weather to trigger teleport or not
 var HALF_BLOCK_SIZE_DISPLAY = 18; // the left and right padding in px when drawing a bloc
 var BLOCK_TO_PIXELS = 36; // the size of a game bloc
 var BLOCK_COLOR = '#777';
+var PHASE_EXIT_COLOR = '#cf9';
 var LINK_COLOR = '#99ccff';
 var LINK_SCOLOR = '#00264d';
 var LINK_INNER = 7;
@@ -384,6 +408,7 @@ var POWERUPCOLOR = ['#9900ff','#ffff00','#0066ff','#00cc00','#ff5050', '#ffbd33'
 //
 var EMPTY_BLOCK = -1;
 var SIDE_WALL = -2;
+var PHASE_EXIT = -3;
 
 //
 /** Game logic helpers **/
@@ -575,12 +600,15 @@ function drawBoard(gfx,offsetJitter){
 	LosY0 = Math.round(Math.max(player.y - LosH,0));
 	LosY1 = Math.round(Math.min(player.y + LosH, board.H-1));
 
-	for (var c=-1; c < colors.length; c++) {
+	for (var c=-2; c < colors.length; c++) {
 		// set brush color and target id
 		var targetC;
-		if (c == -1) { // first loop is for edges
+		if (c == -1) { // second loop is for edges
 			targetC = SIDE_WALL;
 			gfx.fillStyle = BLOCK_COLOR;
+		} else if (c == -2) { // first loop is for phase exists
+			targetC = PHASE_EXIT;
+			gfx.fillStyle = PHASE_EXIT_COLOR;
 		} else {
 			targetC = colors[c];
 			if(targetC == player.hue) // self color is darker
@@ -588,7 +616,7 @@ function drawBoard(gfx,offsetJitter){
 			else
 				gfx.fillStyle = 'hsl(' + targetC + ', 70%, 80%)';
 		}
-		
+		// draw board
 		var pad = HALF_BLOCK_SIZE_DISPLAY*2;
 		var sY=offsetJitter, sX = offsetJitter + Math.round(BLOCK_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 ) - HALF_BLOCK_SIZE_DISPLAY;
 		for (var i=LosX0;i<=LosX1;i++) {
@@ -921,7 +949,7 @@ function drawArrow(gfx, dt, x0, y0, x1, y1, color, isDashed) {
 }
 
 function useAbility() {
-	if(player && player.cooldown == 0) {
+	if(player && currentPhaseType == NO_PHASE && player.cooldown == 0) {
 		if(teleportOverride){
 			socket.emit('teleport');
 			return;

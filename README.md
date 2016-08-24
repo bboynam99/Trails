@@ -10,13 +10,9 @@ This is private repo for the next big online io game.
 
 ## TODO list:
 
-
-
 *** new features
-- add fun combos (teleport modifiers)
 - phone support
-- feedback when "close call" e.g. sparks
-
+- reduce bandwith by sending less global updates, and more targetted updates (on turn, update(id, new direction, new speed)), client side square id fill
 *** needs testing:
 - REDx4: when you trigger it, it seems to transfer points somehow
 
@@ -39,7 +35,7 @@ Purple: Sneaky		| OLD: is about teleporting.
 
 
 
-red-red			*Doomsday Device: Trigger a Doomsday clock. The last player to find shelter dies. This consumes your power ups in the process. Replaces teleport.
+red-red			Doomsday Device: Trigger a Doomsday clock. The last player to find shelter dies. This consumes your power ups in the process. Replaces teleport.
 purple-purple	Easy Landing: Your teleport now also removes power ups on the ground in a large area.
 green-green		Air Bags: Crashing into a wall will cause you to lose some points instead of killing you.
 blue-blue		Laser Beam: Trigger a laser beam that clears an entire line, eliminating players in the process. Replaces teleport.
@@ -68,7 +64,6 @@ yellow-orange	Entrenchment: Clear everything in a large area around you, surroun
 Doomsday Device Brain Storming:
 
 DoomsDay game object:
-
 player.phaseObject = [];
 {
 	ID,
@@ -81,6 +76,7 @@ Board function changePhase(player, phase) {
 	if(player.phase != phase) {
 		player.phase = phase;
 		socket[player.Id].emit('newPhase',phaseType, phaseId)
+		// clientSide: wipesOutAllGameObject()
 	}
 }
 
