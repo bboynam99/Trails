@@ -142,11 +142,8 @@ function killPlayer(p, reason, message) {
 		p.bonusSizeCache = 0;
 		p.phase = null;
 		
-		for (var i=0;i<PU_SLOTS;i++)
-			p.slots[i] = PU_ID_NONE;
-		for (var i=0;i<MAX_POWERUP_ID;i++)
-			p.slotAggregation[i]=0;
-		p.lastSlotFilled = 0;
+		for (var i=0;i<PU_AXIS;i++)
+			p.slotsAxis[i] = 0;
 		
 		sockets[p.id].emit('playerDied', message);
 		if(Math.round(p.x) >= 0 && Math.round(p.y) >= 0 && Math.round(p.x) < board.W && Math.round(p.y) < board.H)

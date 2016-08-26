@@ -1,5 +1,5 @@
 // this file contains the definition for all abilities
-// this is the ordering (for reference only) : purple, yellow, blue, green, red, orange
+// this is the ordering (for reference only) : Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 // the functions that may be defined for each ability are:
 // onTeleportLanding(x,y,p)
 // onLinkComplete(A,B)
@@ -22,7 +22,7 @@ var abilities = [
 	{
 		name: 'Point Vacuum',
 		description: 'After teleporting, you channel a ray on a nearby player in attempt to steal a large number of points.',
-		recipe: [0,0,0,2,2,0], // purple, yellow, blue, green, red, orange
+		recipe: [-2,3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			const POINTS_VAC_STEAL_RATIO = 0.35; // the ratio of points stolen
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
@@ -39,7 +39,7 @@ var abilities = [
 	{
 		name: 'Safe Landing',
 		description: 'Your teleport clearing effect now also removes power ups in a large area.',
-		recipe: [4,0,0,0,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [0,3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			const LANDING_CLEAR_RADIUS = 8;
 			b.applyLogicAroundPosition(x,y,LANDING_CLEAR_RADIUS, function(x,y,result){
@@ -54,7 +54,7 @@ var abilities = [
 	{
 		name: 'Bulldozer blade', // TODO: add a fun visual
 		description: 'After teleporting, you also clear blocks in a small radius for a short duration.',
-		recipe: [2,0,2,0,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [-1,-2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onChangePosition: function(x,y,p) {
 			const BULLDZR_CLEARING_DURATION = 0.75; // the fraction on the CD that the effect lasts
 			const BULLDZR_RADIUS_CLEAR = 2;
@@ -65,7 +65,7 @@ var abilities = [
 	{
 		name: 'Chameleon Device',
 		description: 'After teleporting, channel a ray on a nearby player in attempt to steal their color.',
-		recipe: [2,2,0,0,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [2,3,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 			if(nearestPlayer != null) // create link if possible
@@ -80,7 +80,7 @@ var abilities = [
 	{
 		name: 'C-4',
 		description: 'When your teleport is ready, the next wall you hit will cause a large clearing effect and trigger a short cooldown.',
-		recipe: [0,0,2,0,2,0], // purple, yellow, blue, green, red, orange
+		recipe: [3,-3,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			const C4_CD = 2; // the cooldown triggered
 			if(p.cooldown > 0)
@@ -96,7 +96,7 @@ var abilities = [
 	{
 		name: 'Death Ray',
 		description: 'After teleporting, channel a Death Ray in attempt to eliminate a nearby player.',
-		recipe: [2,0,0,0,0,2], // purple, yellow, blue, green, red, orange
+		recipe: [2,0,0,0,0,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
@@ -110,7 +110,7 @@ var abilities = [
 	{
 		name: 'Air Bags',
 		description: 'Crashing into a wall will cause you to lose some points instead of killing you.',
-		recipe: [0,0,0,4,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [-3,-2,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			b.clearAroundPoint(x,y,1);
 			p.pts -= Math.Max(250,p.pts*.15);
@@ -121,7 +121,7 @@ var abilities = [
 	{
 		name: 'Switch-A-Roo',
 		description: 'After teleporting, channel a ray on a nearby player to switch position and color.',
-		recipe: [0,0,0,0,0,4], // purple, yellow, blue, green, red, orange
+		recipe: [1,3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 			if(nearestPlayer != null) // create link if possible
@@ -144,7 +144,7 @@ var abilities = [
 	{
 		name: 'Rapid recovery',
 		description: 'After teleporting, channel a ray on a nearby player in attempt to trigger their cooldown, and reset yours.',
-		recipe: [2,0,0,0,2,0], // purple, yellow, blue, green, red, orange
+		recipe: [2,1,-1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
@@ -161,7 +161,7 @@ var abilities = [
 	{
 		name: 'Improved Teleport',
 		description: 'Greatly reduces the cooldown on your teleport at the cost of points.',
-		recipe: [2,0,0,2,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [3,3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		afterCacheStatsLogic: function(p) {
 			p.maxCooldown = 0.15;
 		},
@@ -172,7 +172,7 @@ var abilities = [
 	{
 		name: 'E.M.P.',
 		description: 'Clears the entire map (20 second cooldown). Replaces teleport.',
-		recipe: [0,0,4,0,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [2,-4,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			b.clearEntireBoard(); // TODO: add a fun visual effect
 			b.triggerCooldown(p, 20);
@@ -182,7 +182,7 @@ var abilities = [
 	{
 		name: 'Quick Escape',
 		description: 'Your teleport triggers automatically when you hit a wall. Greatly lowers the cooldown.',
-		recipe: [0,0,0,0,2,2], // purple, yellow, blue, green, red, orange
+		recipe: [3,0,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			if(p.cooldown > 0){
 				return false;
@@ -201,7 +201,7 @@ var abilities = [
 	{
 		name: 'Entrenchment',
 		description: 'Clear everything in a large area around you, surrounding you with a thin wall (12 sec cd). Replaces teleport.',
-		recipe: [0,0,2,0,0,2], // purple, yellow, blue, green, red, orange
+		recipe: [0,-3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			const ENTRCH_CD = 12;
 			const ENTRCH_RADIUS = 12;
@@ -226,7 +226,7 @@ var abilities = [
 	{
 		name: 'Bonus Points',
 		description: 'Picking up additional yellow or green Power Ups will provide bonus points.',
-		recipe: [0,2,0,2,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [-3,2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		powerUpPickupOverride: function(p,type) {
 			if(type == PU_ID_POINTS || type == PU_ID_PTSLOSS){ // green or yellow
 				p.pts += 250;
@@ -238,9 +238,9 @@ var abilities = [
 	{
 		name: 'Recycling Device',
 		description: 'Gain bonus points for every block you clear by teleporting.',
-		recipe: [0,0,2,2,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [-3,-3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportLandingOverride: function(p) {
-			var r = TELE_CLEAR_RADIUS + p.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
+			var r = TELE_CLEAR_RADIUS + p.slotsAxis[PU_TO_AXIS[PU_ID_TELEAOE-1]] * PU_DIR[PU_ID_TELEAOE-1]; * PU_TELE_AOE;
 			
 			var count = b.applyLogicAroundPosition(p.x,p.y,r, function(i,j,result) {
 				if(!result)
@@ -260,7 +260,7 @@ var abilities = [
 	{
 		name: 'Point ray',
 		description: 'Channel a ray on a nearby player in attempt to steal a large number of points. Replaces teleport.',
-		recipe: [0,0,0,2,0,2], // purple, yellow, blue, green, red, orange
+		recipe: [-3,1,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			if(p.cooldown > 0)
 				return;
@@ -283,7 +283,7 @@ var abilities = [
 	{
 		name: 'Stealing Ray',
 		description: 'After teleporting, channel a ray in attempt to steal all of another player\'s power ups.',
-		recipe: [0,2,0,0,0,2], // purple, yellow, blue, green, red, orange
+		recipe: [3,2,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
@@ -291,9 +291,8 @@ var abilities = [
 				objects.createLink(p, nearestPlayer, 1.5, 10, 2);
 		},
 		onLinkComplete: function(A,B) {
-			A.slots = B.slots;
-			B.slots = Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0);
-			A.lastSlotFilled = 0; B.lastSlotFilled = 0;
+			A.slotsAxis = B.slotsAxis;
+			B.slotsAxis = Array.apply(null, Array(PU_AXIS)).map(Number.prototype.valueOf,0);
 			aggregatePowerUp(A);
 			aggregatePowerUp(B);
 			
@@ -302,7 +301,7 @@ var abilities = [
 	{
 		name: 'Black Hole',
 		description: 'Before teleporting, drop a black hole, attracting nearby players for a few seconds. Increases the cooldown.',
-		recipe: [0,2,0,0,2,0], // purple, yellow, blue, green, red, orange
+		recipe: [3,-1,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p,ox,oy) {
 			objects.createBlackHole(ox,oy,7.0);//duration
 		},
@@ -313,7 +312,7 @@ var abilities = [
 	{
 		name: 'Laser Beam',
 		description: 'Trigger a laser beam that clears an entire line, eliminating players in the process (15s cd). Replaces teleport.',
-		recipe: [0,4,0,0,0,0], // purple, yellow, blue, green, red, orange
+		recipe: [0,-2,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p,ox,oy) {
 			if(p.dx != 0)
 				objects.createLaser(p,true,y,1,2.25);
@@ -327,12 +326,11 @@ var abilities = [
 	{
 		name: 'Doomsday Device',
 		description: 'Trigger a Doomsday clock. The last player to find shelter dies. This consumes your power ups in the process. Replaces teleport.',
-		recipe: [0,0,0,0,4,0], // purple, yellow, blue, green, red, orange
+		recipe: [3,-2,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			objects.createDoomsdayPhase(p, function() { // creator gets out function
 				// clear power ups
-				p.slots = Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0);
-				p.lastSlotFilled = 0;
+				p.slotsAxis = Array.apply(null, Array(NUM_AXIS)).map(Number.prototype.valueOf,0);
 				aggregatePowerUp(p);
 			});
 			
@@ -344,15 +342,10 @@ var abilities = [
 
 // ability related functions:
 
-function aggregatePowerUp(player) {
-	for(var i =0;i<MAX_POWERUP_ID ;i++) //clear previous aggregation
-		player.slotAggregation[i] = PU_ID_NONE;
-	
-	for(var i =0;i<PU_SLOTS ;i++) // count aggregation
-		if(player.slots[i] > 0)
-			player.slotAggregation[player.slots[i]-1]++;
-			
+function aggregatePowerUp(player) {	
 	// update ability based on the totals computed
+	// TODO: only apply this if at least 3 power ups have been picked up
+	// TODO: find the one with the closest distance.
 	player.specialAbility = abilities.find( function(a) {
 		for(var i=0;i<MAX_POWERUP_ID;i++)
 			if(player.slotAggregation[i] != a.recipe[i])

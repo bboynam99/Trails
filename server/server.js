@@ -50,9 +50,7 @@ io.on('connection', function (socket) {
 		name: '',
 		blockId: blockIdGenerator,
 		desyncCounter: 0, // the cumulated delta between client and server
-		lastSlotFilled: 0,
-		slots: Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0),
-		slotAggregation: Array.apply(null, Array(MAX_POWERUP_ID)).map(Number.prototype.valueOf,0),
+		slotsAxis: Array.apply(null, Array(NUM_AXIS)).map(Number.prototype.valueOf,0),
 		specialAbility: undefined,
 		phase: undefined
 	};
@@ -302,7 +300,7 @@ function sendUpdatesPlayers() {
 								name: o.name,
 								pts: o.pts,
 								dpts: o.dpts,
-								slots: o.slots
+								slotsAxis: o.slotsAxis
 							});
 						}
 					}
@@ -312,7 +310,7 @@ function sendUpdatesPlayers() {
 				velocity:u.velocity,
 				pts: u.pts,
 				dpts: u.dpts,
-				slots: u.slots
+				slots: u.slotsAxis
 			};
 							
 			sockets[u.id].emit('upPl', otherPlayers, selfPlayer);
@@ -418,7 +416,7 @@ function beforeConfirmedMove(x,y,p) {
 	if(p.pts <= 0)
 		b.killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
 	// update velocity based on points
-	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + p.slotAggregation[PU_ID_SPEED-1] * PU_SPEED_MOD; // at 10k pts, speed = 7
+	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + p.slotsAxis[PU_TO_AXIS[PU_ID_SPEED-1]] * PU_DIR[PU_ID_SPEED-1] * PU_SPEED_MOD; // at 10k pts, speed = 7
 }
 
 function dilation(x,y,p,v) {
@@ -511,8 +509,9 @@ function pickupPowerUp(player, powerUpType) {
 		if(!player.specialAbility.powerUpPickupOverride(player, powerUpType))
 			return;
 	
-	player.slots[player.lastSlotFilled] = powerUpType;
-	player.lastSlotFilled = (player.lastSlotFilled + 1) % PU_SLOTS;
+	player.slotsAxis[PU_TO_AXIS[powerUpType-1]] += PU_DIR[powerUpType-1];
+	// maximum limits (between 1 and 4)
+	player.slotsAxis[PU_TO_AXIS[powerUpType-1]] = Math.min(4,Math.max(-4,player.slotsAxis[PU_TO_AXIS[powerUpType-1]]));
 	
 	abilityManager.aggregatePowerUp(player);
 }

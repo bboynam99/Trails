@@ -4,3 +4,4 @@ npm-debug.log
 bin
 .DS_Store
 /leaderboard.json
+/powerupclustering/*
