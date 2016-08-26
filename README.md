@@ -13,10 +13,14 @@ This is private repo for the next big online io game.
 *** new features
 - phone support
 - reduce bandwith by sending less global updates, and more targetted updates (on turn, update(id, new direction, new speed)), client side square id fill
+- shake is a bit clunky
+
 *** needs testing:
 - REDx4: when you trigger it, it seems to transfer points somehow
 
 *** known bugs:
+- blocks in phase don't kill you.
+- last person in phase doesn't die
 
 *** admin commands (new feature)
 - broad cast restart countdown with custom message

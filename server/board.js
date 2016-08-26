@@ -9,7 +9,8 @@ module.exports = {
 	clearEntireBoard,
 	teleportPlayer,
 	changePhase,
-	unphase
+	unphase,
+	changedPosition
 }
 
 global.board = { // game board
@@ -79,11 +80,7 @@ function findNearestPlayer(x,y,r,p){
 	var val = applyLogicAroundPosition(x,y,r, function(i,j,result) {				
 		var o = playerBoard[i][j];
 		
-		if(o != null && (o.isDead || o.id == p.id)) // ignore self and dead players
-			return result;
-			
-		
-		if(o.phase != p.phase)//ignore players in a different phase
+		if(o != null && (o.isDead || o.id == p.id || o.phase != p.phase)) // ignore self, dead players, and phased players
 			return result;
 		
 		if(result == null) // ignore empty cells
@@ -214,4 +211,11 @@ function changePhase(player, phase) {
 function unphase(player) {
 	player.phase = null;
 	sockets[player.id].emit('unphase');
+}
+
+function changedPosition(p, oldx,oldy,newx,newy) {// ROUND NUMBERS ONLY!
+	playerBoard[oldx][oldy] = null; // update player position LUT
+	playerBoard[newx][newy] = p;
+	p.lastX = newx;
+	p.lastY = newy;
 }

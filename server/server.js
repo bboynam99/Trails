@@ -8,7 +8,7 @@ app.use(express.static(__dirname + '/../client'));
 var b = require('./board.js');
 var spawningQueue = require('./spawningQueue.js'); 
 global.score = require('./score.js');
-var abilityManager = require('./abilities.js'); 
+var abilityManager = require('./abilities.js');
 var abilities = abilityManager.abilities;
 
 //
@@ -99,10 +99,7 @@ io.on('connection', function (socket) {
 			if((nx <= 0 || ny <= 0 || nx >= board.W-1 || ny >= board.H-1)) {
 				b.killPlayer(player, 'player is outside the playable area.','You crashed into a border.'); 
 			} else if(nx != x || ny != y) { // if position has changed 
-				playerBoard[x][y] = null; // update player position LUT
-				playerBoard[nx][ny] = player;
-				player.lastX = nx;
-				player.lastY = ny;
+				b.changedPosition(player,x,y,nx,ny);
 				if(player.phase) { // in a different phase, the logic is custom.
 					player.phase.data.replayLineOverride(x, y, nx, ny, player);
 				} else {
@@ -112,7 +109,7 @@ io.on('connection', function (socket) {
 			}
 		}
 	});
-
+	
 	socket.on('disconnect', function () {
 		b.killPlayer(player, 'disconnected, killing his avatar', 'Connection was closed!');
 		delete sockets[player.id];
@@ -288,12 +285,7 @@ function sendUpdatesPlayers() {
 			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H-1);
 
 			var otherPlayers = [];
-			//var newLinks = [];
-			//var l = board.links[u];
-			/*if(l && l.dt >= LINK_START) {
-				newLinks.push(toClientLink(l));
-			}*/
-			
+
 			for (var i=0;i<=losX1-losX0;i++) {
 				for (var j=0;j<=losY1-losY0;j++) {
 					if(playerBoard[i+losX0][j+losY0]) {
@@ -327,17 +319,6 @@ function sendUpdatesPlayers() {
 		}
 	});
 }
-
-function toClientLink(serverLink) {
-	return {
-		x0: serverLink.fromP.x,
-		y0: serverLink.fromP.y,
-		x1: serverLink.toP.x,
-		y1: serverLink.toP.y,
-		progress: (serverLink.dt - LINK_START) / (LINK_END - LINK_START)
-	};
-}
-
 
 /** Game Logic Helpers **/
 var lastUpdate = Date.now(); // used to compute the time delta between frames
@@ -418,8 +399,8 @@ function afterInterpolationMove(x,y,p,isUnvisitedPosition) {
 	//console.log('added phantom with value ' + board.blockId[x][y] + ' at posistion (' + x + ',' + y + ') for player #' + p.blockId);
 	if(isUnvisitedPosition){
 		dilation(x,y,p,p.blockId * -1);
-		if(p.specialAbility && p.specialAbility.onChangePosition)
-			p.specialAbility.onChangePosition(x,y,p);
+		if(p.specialAbility && p.specialAbility.onchangedPosition)
+			p.specialAbility.onchangedPosition(x,y,p);
 	}
 }
 
@@ -541,16 +522,23 @@ function checkSync() {
 	users.forEach( function(u) {
 		if(!u.isDead)
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
-				//console.log('Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
-				//b.killPlayer(u, 'desync too high', 'You were out of sync with the server :('); // TODO: force resync
+				b.killPlayer(u, 'Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE, 'You were out of sync with the server :(');
+			} else if(Math.abs(u.desyncCounter) > DESYNC_TOLERENCE) {
+				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + DESYNC_TOLERENCE);
 				forceResync(u);
-				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE);
 			}
 	});
 }
 
 // this function is called when a player sends data inconsistent with the server values. The server forces a resync with the client.
 function forceResync(p) {
+	var newX = p.x + p.velocity * p.dx * p.desyncCounter;
+	var newY = p.y + p.velocity * p.dy * p.desyncCounter;
+	newX = Math.max(1,newX); newX = Math.min(newX, BOARD_W-2);
+	newY = Math.max(1,newY); newY = Math.min(newY, BOARD_H-2);
+	b.changedPosition(p,Math.round(p.lastX),Math.round(p.lastY),Math.round(newX),Math.round(newY));
+	p.x = newX; p.y = newY;
+	
 	sockets[p.id].emit('sync',p.x,p.y);
 	p.desyncCounter = 0;
 }

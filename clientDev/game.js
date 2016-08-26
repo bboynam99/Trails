@@ -24,7 +24,7 @@ Game.prototype.handleNetwork = function(socket) {
 		gameOver = false;
 		gameObjects = []; // clear all objects
 		tick();
-		socket.emit('myNameIs', playerName);
+		socket.emit('myNameIs', playerName);		
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
 			type: 3,
@@ -336,8 +336,8 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.fillText('Eliminated ', screenWidth * 0.5, screenHeight * 0.65 + offset);
 		gfx.strokeText('Eliminated ', screenWidth * 0.5, screenHeight * 0.65 + offset);
 		gfx.textAlign = 'left';
-		gfx.fillStyle = '#FF2424';
-		gfx.strokeStyle = '#ffacac';
+		gfx.fillStyle = '#ffbcbc';
+		gfx.strokeStyle = '#ff2424';
 		gfx.fillText(o.name, screenWidth * 0.5, screenHeight * 0.65 + offset);
 		gfx.strokeText(o.name, screenWidth * 0.5, screenHeight * 0.65 + offset);
 		
