@@ -142,7 +142,7 @@ function killPlayer(p, reason, message) {
 		p.bonusSizeCache = 0;
 		p.phase = null;
 		
-		for (var i=0;i<PU_AXIS;i++)
+		for (var i=0;i<NUM_AXIS;i++)
 			p.slotsAxis[i] = 0;
 		
 		sockets[p.id].emit('playerDied', message);
@@ -191,7 +191,7 @@ function teleportPlayer(player,x,y,cd) {
 	}
 	
 	triggerCooldown(player, cd);
-	var r = TELE_CLEAR_RADIUS + player.slotAggregation[PU_ID_TELEAOE-1] * PU_TELE_AOE;
+	var r = TELE_CLEAR_RADIUS + player.slotsAxis[PU_TO_AXIS[PU_ID_TELEAOE-1]] * PU_DIR[PU_ID_TELEAOE-1] * PU_TELE_AOE;
 	clearAroundPoint(player.x,player.y,r);
 	
 	if(player.specialAbility && player.specialAbility.onTeleportLanding)

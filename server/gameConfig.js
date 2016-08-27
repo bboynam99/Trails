@@ -27,15 +27,15 @@ global.B_BORDERS = 10;
 global.B_KILLSYOUTHRESHOLD = 5; // anything above that kills you
 // PowerUp flags
 global.PU_ID_NONE = 0;
-global.PU_ID_TELECD = 1;
-global.PU_ID_PTSLOSS = 2;
-global.PU_ID_TELEAOE = 3;
+global.PU_ID_SPEED = 1;
+global.PU_ID_TELECD = 2;
+global.PU_ID_PTSLOSS = 3;
 global.PU_ID_POINTS = 4;
-global.PU_ID_SPEED = 5;
+global.PU_ID_TELEAOE = 5;
 global.PU_ID_TELERANGE = 6;
 global.MAX_POWERUP_ID = 6; // UPDATE THIS everytime a new power up is added
 global.NUM_AXIS = 3;
-global.PU_TO_AXIS = [1,2,3,1,2,3];
+global.PU_TO_AXIS = [0,1,2,0,1,2];
 global.PU_DIR = [1,1,1,-1,-1,-1];
 
 global.PU_SPEED_MOD = 1.0; // bloc per second per PU

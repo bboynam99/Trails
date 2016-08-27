@@ -401,8 +401,9 @@ var LINK_OUTER = 15;
 var LINK_JITTER = 20; // adds a jitter effect (in px)
 var POWERUP_RADIUS = 10;
 var POWERUP_STROKE = 3;
-var POWERUPSCOLOR = ['#660066','#ffcc00','#003399','#339933','#cc0000', '#ff5733'];
-var POWERUPCOLOR = ['#9900ff','#ffff00','#0066ff','#00cc00','#ff5050', '#ffbd33'];
+var POWERUPSCOLOR = ['#cc0000','#660066','#003399','#339933','#ffcc00', '#ff5733'];
+var POWERUPCOLOR = ['#ff5050', '#9900ff','#0066ff','#00cc00','#ffff00', '#ffbd33'];
+var COLORDESCRIPTION = ['Fast','Sneaky','Solitary','Greedy','Destructive','Hostile'];
 //
 /** Game logic constants **/
 //
@@ -529,18 +530,10 @@ function drawPlayer(gfx, p){
 	gfx.strokeStyle =  '#999';
 	coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOCK_SIZE_DISPLAY);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
-	// draw powerups
-	if(p['slots']){
-		var k=0;
-		for(var i=0;i<2;i++)
-			for(var j=0;j<2;j++){
-				var id = p.slots[k++];
-				if(id > 0) {
-					gfx.fillStyle = POWERUPCOLOR[id - 1];
-					gfx.fillRect(coords[0] + coords[2]/2 * i,coords[1]+ coords[3]/2 * j,coords[2]/2,coords[3]/2);
-				}
-			}
-	}
+	console.log(p.slots);
+	// draw powerups GUI
+	if(p.slots)
+		drawPowerUpGUI(gfx,coords[0] + coords[2]/2,coords[1]+ coords[3]/2,[Math.max(p.slots[0],0),Math.max(p.slots[1],0),Math.max(p.slots[2],0),Math.max(-1*p.slots[0],0),Math.max(-1*p.slots[1],0),Math.max(-1*p.slots[2],0)]);
 	
 	// draw name
 	gfx.fillStyle = 'hsl(' + p.hue + ', 100%, 90%)';
@@ -630,7 +623,7 @@ function drawBoard(gfx,offsetJitter){
 			sX += BLOCK_TO_PIXELS;
 		}
 	}
-	// draw xp
+	// draw power ups	
 	gfx.lineWidth = POWERUP_STROKE;
 	var PI2 = 2*Math.PI;
 	var sY=0, sX = Math.round(BLOCK_TO_PIXELS*(LosX0 - player.x) + screenWidth /2 );
@@ -650,6 +643,36 @@ function drawBoard(gfx,offsetJitter){
 		sX += BLOCK_TO_PIXELS;
 	}
 }
+
+function drawPowerUpGUI(gfx,cx,cy,levels) {
+	const LEN = 30;
+	const TEXTDIST = 20;
+	const OFF = Math.PI *0.55;
+
+	for (var i=0;i<6;i++) {
+		if(levels[i] == 0)
+			continue;
+		gfx.strokeStyle = POWERUPSCOLOR[i];
+		gfx.lineWidth = 6
+		var dist = levels[i]/4 * LEN;
+		gfx.beginPath();
+		gfx.moveTo(cx,cy);
+		gfx.lineTo(cx + Math.cos(i*Math.PI/3 - OFF)*dist,cy + Math.sin(i*Math.PI/3 - OFF)*dist);
+		gfx.stroke();
+		gfx.strokeStyle = POWERUPCOLOR[i];
+		gfx.lineWidth = 4;
+		gfx.stroke();
+	}
+	gfx.font = 'bold 11px Verdana';
+	gfx.textAlign = 'center';
+	for (var i=0;i<6;i++) {
+		if(levels[i] == 0)
+			continue;
+		gfx.fillStyle = POWERUPSCOLOR[i];
+		gfx.fillText(COLORDESCRIPTION[i], cx + Math.cos(i*Math.PI/3 + OFF)*TEXTDIST,cy + Math.sin(i*Math.PI/3 + OFF)*TEXTDIST);
+	}
+}
+
 function updateGameObjects(dt) {
 	for(var i=gameObjects.length-1;i>=0;i--) {
 		var l = gameObjects[i];
