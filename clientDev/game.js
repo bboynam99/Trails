@@ -325,6 +325,9 @@ Game.prototype.handleGraphics = function(gfx) {
 		gfx.stroke();
 	}
 	
+	// draw PU gui
+	drawPowerUpGUI(gfx,3*BLOCK_TO_PIXELS,3*BLOCK_TO_PIXELS,axisToSlots(player.slots),2*BLOCK_TO_PIXELS,true,true);
+	
 	// draw player elimination
 	var offset = 0;
 	lastEliminations.forEach(function(o) {
@@ -530,10 +533,14 @@ function drawPlayer(gfx, p){
 	gfx.strokeStyle =  '#999';
 	coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOCK_SIZE_DISPLAY);
 	gfx.strokeRect(coords[0],coords[1],coords[2],coords[3]);
-	console.log(p.slots);
 	// draw powerups GUI
 	if(p.slots)
-		drawPowerUpGUI(gfx,coords[0] + coords[2]/2,coords[1]+ coords[3]/2,[Math.max(p.slots[0],0),Math.max(p.slots[1],0),Math.max(p.slots[2],0),Math.max(-1*p.slots[0],0),Math.max(-1*p.slots[1],0),Math.max(-1*p.slots[2],0)]);
+		drawPowerUpGUI(gfx,
+			coords[0] + coords[2]/2,
+			coords[1]+ coords[3]/2,
+			axisToSlots(p.slots),
+			HALF_BLOCK_SIZE_DISPLAY,
+			false,false);
 	
 	// draw name
 	gfx.fillStyle = 'hsl(' + p.hue + ', 100%, 90%)';
@@ -559,6 +566,16 @@ function drawPlayer(gfx, p){
 	nx = coords[0] + coords[2]*.75, ny = coords[1] + coords[3]*1.2;
 	gfx.strokeText(t,nx,ny);
 	gfx.fillText(t,nx,ny);
+}
+
+function axisToSlots(slots){
+	return [	Math.max(slots[0],0),
+				Math.max(slots[1],0),
+				Math.max(slots[2],0),
+				Math.max(-1*slots[0],0),
+				Math.max(-1*slots[1],0),
+				Math.max(-1*slots[2],0)
+			];
 }
 
 function getBonusSize(score) {
@@ -644,32 +661,40 @@ function drawBoard(gfx,offsetJitter){
 	}
 }
 
-function drawPowerUpGUI(gfx,cx,cy,levels) {
-	const LEN = 30;
-	const TEXTDIST = 20;
+function drawPowerUpGUI(gfx,cx,cy,levels,scale,isDrawAllLines,isKeywordVisible) {
 	const OFF = Math.PI *0.55;
 
-	for (var i=0;i<6;i++) {
-		if(levels[i] == 0)
-			continue;
-		gfx.strokeStyle = POWERUPSCOLOR[i];
-		gfx.lineWidth = 6
-		var dist = levels[i]/4 * LEN;
-		gfx.beginPath();
-		gfx.moveTo(cx,cy);
-		gfx.lineTo(cx + Math.cos(i*Math.PI/3 - OFF)*dist,cy + Math.sin(i*Math.PI/3 - OFF)*dist);
-		gfx.stroke();
-		gfx.strokeStyle = POWERUPCOLOR[i];
-		gfx.lineWidth = 4;
-		gfx.stroke();
+	for (var i=0;i<levels.length;i++) {		
+		if(isDrawAllLines){
+			gfx.lineWidth = 1;
+			gfx.strokeStyle = POWERUPSCOLOR[i];
+			gfx.beginPath();
+			gfx.moveTo(cx,cy);
+			gfx.lineTo(cx + Math.cos(i*Math.PI/3 - OFF)*scale,cy + Math.sin(i*Math.PI/3 - OFF)*scale);
+			gfx.stroke();
+		}
+		
+		if(levels[i] != 0) {
+			var dist = levels[i]/4 * scale;
+			gfx.strokeStyle = POWERUPSCOLOR[i];
+			gfx.lineWidth = 6;
+			gfx.beginPath();
+			gfx.moveTo(cx,cy);
+			gfx.lineTo(cx + Math.cos(i*Math.PI/3 - OFF)*dist,cy + Math.sin(i*Math.PI/3 - OFF)*dist);
+			gfx.stroke();
+			gfx.strokeStyle = POWERUPCOLOR[i];
+			gfx.lineWidth = 4;
+			gfx.stroke();
+		}
 	}
-	gfx.font = 'bold 11px Verdana';
-	gfx.textAlign = 'center';
-	for (var i=0;i<6;i++) {
-		if(levels[i] == 0)
-			continue;
-		gfx.fillStyle = POWERUPSCOLOR[i];
-		gfx.fillText(COLORDESCRIPTION[i], cx + Math.cos(i*Math.PI/3 + OFF)*TEXTDIST,cy + Math.sin(i*Math.PI/3 + OFF)*TEXTDIST);
+	if(isKeywordVisible) {
+		var TEXTDIST = scale*1.2;
+		gfx.font = 'bold ' + Math.round(scale/5) +'px Verdana';
+		gfx.textAlign = 'center';
+		for (var i=0;i<levels.length;i++) {
+			gfx.fillStyle = POWERUPSCOLOR[i];
+			gfx.fillText(COLORDESCRIPTION[i], cx + Math.cos(i*Math.PI/3 - OFF)*TEXTDIST,cy + Math.sin(i*Math.PI/3 - OFF)*TEXTDIST);
+		}
 	}
 }
 

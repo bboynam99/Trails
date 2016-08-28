@@ -416,7 +416,7 @@ function beforeConfirmedMove(x,y,p) {
 	if(p.pts <= 0)
 		b.killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
 	// update velocity based on points
-	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + p.slotsAxis[PU_TO_AXIS[PU_ID_SPEED-1]] * PU_DIR[PU_ID_SPEED-1] * PU_SPEED_MOD; // at 10k pts, speed = 7
+	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + Math.max(0,p.slotsAxis[PU_TO_AXIS[PU_ID_SPEED-1]] * PU_DIR[PU_ID_SPEED-1]) * PU_SPEED_MOD; // at 10k pts, speed = 7
 }
 
 function dilation(x,y,p,v) {

@@ -96,7 +96,7 @@ var abilities = [
 	{
 		name: 'Death Ray',
 		description: 'After teleporting, channel a Death Ray in attempt to eliminate a nearby player.',
-		recipe: [2,0,0,0,0,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,0,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
@@ -240,7 +240,7 @@ var abilities = [
 		description: 'Gain bonus points for every block you clear by teleporting.',
 		recipe: [-3,-3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportLandingOverride: function(p) {
-			var r = TELE_CLEAR_RADIUS + p.slotsAxis[PU_TO_AXIS[PU_ID_TELEAOE-1]] * PU_DIR[PU_ID_TELEAOE-1] * PU_TELE_AOE;
+			var r = TELE_CLEAR_RADIUS + Math.max(0,p.slotsAxis[PU_TO_AXIS[PU_ID_TELEAOE-1]] * PU_DIR[PU_ID_TELEAOE-1]) * PU_TELE_AOE;
 			
 			var count = b.applyLogicAroundPosition(p.x,p.y,r, function(i,j,result) {
 				if(!result)
@@ -346,7 +346,8 @@ function aggregatePowerUp(player) {
 	// update ability based on the totals computed
 	// TODO: only apply this if at least 3 power ups have been picked up
 	// TODO: find the one with the closest distance.
-	var sum = player.slotsAxis.reduce((prev, curr) => prev + Math.abs(prev));
+	var sum = player.slotsAxis.reduce((prev, curr) => prev + Math.abs(curr),0);
+	//console.log('player has ' + sum + ' PUs.');
 	const NEEDS_AT_LEAST = 3;
 	if (sum < NEEDS_AT_LEAST)
 		player.specialAbility = null;
@@ -355,6 +356,7 @@ function aggregatePowerUp(player) {
 		var bestMatchDist = Number.POSITIVE_INFINITY;
 		for (var i=0; i<abilities.length; i++) {
 			var dist = abilities[i].recipe.reduce((prev,cur,i) => prev + Math.abs(cur - player.slotsAxis[i]),0);
+			//console.log('found a distance of ' + dist + ' for ability ' + abilities[i].name);
 			if (dist < bestMatchDist) {
 				bestMatchDist = dist;
 				bestMatch = abilities[i];
@@ -371,10 +373,10 @@ function aggregatePowerUp(player) {
 	
 	// cache some stuff
 	
-	player.maxCooldown = TELE_COOLDOWN - player.slotsAxis[PU_TO_AXIS[PU_ID_TELECD-1]] * PU_DIR[PU_ID_TELECD-1] * PU_TELE_CD;
-	player.dpts = DEFAULT_POINTS_PER_SEC + player.slotsAxis[PU_TO_AXIS[PU_ID_POINTS-1]] * PU_DIR[PU_ID_POINTS-1] * PU_POINTS_MOD ;
-	player.teleportDist = TELE_DISTANCE + player.slotsAxis[PU_TO_AXIS[PU_ID_TELERANGE-1]] * PU_DIR[PU_ID_TELERANGE-1] * PU_TELE_RANGE;
-	player.lpr = DEFAULT_LOSING_POINTS_RATIO - player.slotsAxis[PU_TO_AXIS[PU_ID_PTSLOSS-1]] * PU_DIR[PU_ID_PTSLOSS-1] * PU_PTS_LOSS_MOD;
+	player.maxCooldown = TELE_COOLDOWN - Math.max(0,player.slotsAxis[PU_TO_AXIS[PU_ID_TELECD-1]] * PU_DIR[PU_ID_TELECD-1]) * PU_TELE_CD;
+	player.dpts = DEFAULT_POINTS_PER_SEC + Math.max(0,player.slotsAxis[PU_TO_AXIS[PU_ID_POINTS-1]] * PU_DIR[PU_ID_POINTS-1]) * PU_POINTS_MOD ;
+	player.teleportDist = TELE_DISTANCE + Math.max(0,player.slotsAxis[PU_TO_AXIS[PU_ID_TELERANGE-1]] * PU_DIR[PU_ID_TELERANGE-1]) * PU_TELE_RANGE;
+	player.lpr = DEFAULT_LOSING_POINTS_RATIO - Math.max(0,player.slotsAxis[PU_TO_AXIS[PU_ID_PTSLOSS-1]] * PU_DIR[PU_ID_PTSLOSS-1]) * PU_PTS_LOSS_MOD;
 	
 	if(player.specialAbility && player.specialAbility.afterCacheStatsLogic)
 		player.specialAbility.afterCacheStatsLogic(player);
