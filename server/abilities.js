@@ -109,12 +109,11 @@ var abilities = [
 	},
 	{
 		name: 'Air Bags',
-		description: 'Crashing into a wall will cause you to lose some points instead of killing you.',
+		description: 'Crashing into a wall will cause you to lose some points instead of eliminating you.',
 		recipe: [-3,-2,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			b.clearAroundPoint(x,y,1);
-			p.pts -= Math.Max(250,p.pts*.15);
-
+			p.pts -= Math.max(250,p.pts*.15);
 			return true;
 		}
 	},

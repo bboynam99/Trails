@@ -87,6 +87,7 @@ io.on('connection', function (socket) {
 			var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
 			var clientTravelTime = (Math.abs(newInfo.x - player.lastX) + Math.abs(newInfo.y - player.lastY)) / player.velocity;
 			player.desyncCounter += serverTravelTime - clientTravelTime;
+			console.log('desyc this mv tick:' + (serverTravelTime - clientTravelTime));
 			
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newInfo.x), ny = Math.round(newInfo.y);
