@@ -21,6 +21,7 @@ var blockIdGenerator = 11;
 /** Socket communication (game events) **/
 //
 //build socket event
+//var first = 0;
 global.sockets = {};
 io.on('connection', function (socket) {
 	console.log("A new player has connected: " + socket.id);
@@ -36,7 +37,7 @@ io.on('connection', function (socket) {
 		lastY: spawnPosition[1],
 		dx: spawnPosition[2],
 		dy: spawnPosition[3],
-		velocity: INITIAL_VELOCITY, // in blocs per second
+		velocity: INITIAL_VELOCITY,//(first++==0?0.1:INITIAL_VELOCITY), // in blocs per second
 		cooldown: TELE_COOLDOWN,
 		maxCooldown: TELE_COOLDOWN,
 		teleportDist: TELE_DISTANCE,
@@ -201,7 +202,6 @@ function gameloop() {
 	
 	moveloop(dt); // interpolate player position
 	spawnPowerUps();
-	//updateLinks(dt); // TODO: update all objects!
 	// update cooldowns, scores and velocity
 	users.forEach( function(u) {
 		try{
@@ -417,6 +417,7 @@ function beforeConfirmedMove(x,y,p) {
 	if(p.pts <= 0)
 		b.killPlayer(p,'ran out of points', 'You lost all your points! Avoid your own track next time.');
 	// update velocity based on points
+	// TODO: toggle comment on this line (for testing)
 	p.velocity = INITIAL_VELOCITY / (0.000071 * p.pts + 1) + Math.max(0,p.slotsAxis[PU_TO_AXIS[PU_ID_SPEED-1]] * PU_DIR[PU_ID_SPEED-1]) * PU_SPEED_MOD; // at 10k pts, speed = 7
 }
 
