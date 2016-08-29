@@ -69,7 +69,7 @@ var abilities = [
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 			if(nearestPlayer != null) // create link if possible
-				objects.createLink(p, nearestPlayer, 1.00, 12, 1);
+				objects.createLink(p, nearestPlayer, 0.65, 16, 1);
 		},
 		onLinkComplete: function(A,B) {
 			A.hue = B.hue;
@@ -101,7 +101,7 @@ var abilities = [
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
 			if(nearestPlayer != null)  // create link if possible
-				objects.createLink(p, nearestPlayer, 2.5, 9, 3);
+				objects.createLink(p, nearestPlayer, 1.5, 10, 3);
 		},
 		onLinkComplete: function(A,B) {
 			b.hasCrashedInto(A, B, 'You were eliminated by ' + A.name + '\'s power up ability.');
@@ -149,7 +149,7 @@ var abilities = [
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
 			if(nearestPlayer != null)  // create link if possible
-				objects.createLink(p, nearestPlayer, 0.75, 9, 2);
+				objects.createLink(p, nearestPlayer, 0.75, 12, 2);
 		},
 		onLinkComplete: function(A,B) {
 			b.triggerCooldown(A,0.15);
@@ -225,11 +225,11 @@ var abilities = [
 	},
 	{
 		name: 'Bonus Points',
-		description: 'Picking up additional yellow or green Power Ups will provide bonus points.',
+		description: 'Picking up additional green power ups provides bonus points.',
 		recipe: [-3,2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		powerUpPickupOverride: function(p,type) {
-			if(type == PU_ID_POINTS || type == PU_ID_PTSLOSS){ // green or yellow
-				p.pts += 250;
+			if(type == PU_ID_POINTS) { // green or yellow
+				p.pts += 150;
 				return false;
 			}
 			return true;
@@ -344,11 +344,9 @@ var abilities = [
 
 function aggregatePowerUp(player) {	
 	// update ability based on the totals computed
-	// TODO: only apply this if at least 3 power ups have been picked up
-	// TODO: find the one with the closest distance.
 	var sum = player.slotsAxis.reduce((prev, curr) => prev + Math.abs(curr),0);
 	//console.log('player has ' + sum + ' PUs.');
-	const NEEDS_AT_LEAST = 3;
+	const NEEDS_AT_LEAST = 2;
 	if (sum < NEEDS_AT_LEAST)
 		player.specialAbility = null;
 	else {
