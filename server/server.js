@@ -87,8 +87,8 @@ io.on('connection', function (socket) {
 			// check if new position is reasonable. If sketchy, close socket.
 			var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
 			var clientTravelTime = (Math.abs(newInfo.x - player.lastX) + Math.abs(newInfo.y - player.lastY)) / player.velocity;
-			player.desyncCounter += serverTravelTime - clientTravelTime;
-			console.log('desyc this mv tick:' + (serverTravelTime - clientTravelTime));
+			var desyc = serverTravelTime - clientTravelTime;
+			player.desyncCounter += (Math.abs(desyc) > 0.1 ? desyc : 0);
 			
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newInfo.x), ny = Math.round(newInfo.y);
@@ -521,13 +521,18 @@ function pickupPowerUp(player, powerUpType) {
 // this function kicks players that are out of synch with the game clock.
 function checkSync() {
 	users.forEach( function(u) {
-		if(!u.isDead)
+		if(!u.isDead) {
+			// check lag status
 			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
 				b.killPlayer(u, 'Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE, 'You were out of sync with the server :(');
 			} else if(Math.abs(u.desyncCounter) > DESYNC_TOLERENCE) {
 				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + DESYNC_TOLERENCE);
 				forceResync(u);
 			}
+			// forgive the player a bit
+			u.desyncCounter *= 0.95;
+			
+		}
 	});
 }
 

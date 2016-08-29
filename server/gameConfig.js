@@ -18,7 +18,7 @@ global.TELE_DISTANCE = 8;
 global.TELE_COOLDOWN = 6;
 global.MAX_HEARTBEAT_KICK = 4000; // player will be killed after no input (ms);
 global.DESYNC_TOLERENCE = 0.5; // the number of sec of desync tolerated before the player is resync'd
-global.MAX_DESYNC_TOLERENCE = 1.0;// the number of sec of desync tolerated before the player is kicked
+global.MAX_DESYNC_TOLERENCE = 2.0;// the number of sec of desync tolerated before the player is kicked
 global.PU_SLOTS = 4; // the number of powerups a player can carry at once
 // Flags for the bloc board state
 global.B_EMPTY = 0;
