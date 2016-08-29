@@ -961,6 +961,7 @@ function drawSkull(gfx, scale, x, y) {
 }
 
 function drawArrow(gfx, dt, x0, y0, x1, y1, color, isDashed) {
+	try {
 	 //variables to be used when creating the arrow
 	var headlen = 10;
 	var angle = Math.atan2(y1-y0,x1-x0);
@@ -973,8 +974,6 @@ function drawArrow(gfx, dt, x0, y0, x1, y1, color, isDashed) {
 	gfx.strokeStyle = "#cc0000";
 	gfx.lineWidth = 5;
 	gfx.stroke();
-	gfx.setLineDash([0,0]); 
-	gfx.lineDashOffset=0;
 	
 	//starting a new path from the head of the arrow to one of the sides of the point
 	gfx.beginPath();
@@ -994,6 +993,10 @@ function drawArrow(gfx, dt, x0, y0, x1, y1, color, isDashed) {
 	gfx.stroke();
 	gfx.fillStyle = "#cc0000";
 	gfx.fill();
+	} catch(ex){} finally {
+		gfx.setLineDash([0,0]); 
+		gfx.lineDashOffset=0;
+	}
 }
 
 function useAbility() {
