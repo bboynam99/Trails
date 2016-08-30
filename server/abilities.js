@@ -56,8 +56,9 @@ var abilities = [
 		description: 'After teleporting, you also clear blocks in a small radius for a short duration.',
 		recipe: [-1,-2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onChangePosition: function(x,y,p) {
-			const BULLDZR_CLEARING_DURATION = 0.75; // the fraction on the CD that the effect lasts
+			const BULLDZR_CLEARING_DURATION = 0.50; // the fraction on the CD that the effect lasts
 			const BULLDZR_RADIUS_CLEAR = 2;
+			//console.log(p.cooldown + '>=' + (p.maxCooldown * (1-BULLDZR_CLEARING_DURATION)))
 			if(p.cooldown >= p.maxCooldown * (1-BULLDZR_CLEARING_DURATION))
 				b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,BULLDZR_RADIUS_CLEAR);
 		}
