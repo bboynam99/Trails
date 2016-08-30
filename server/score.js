@@ -8,7 +8,7 @@ module.exports = {
 var jsonfile = require('jsonfile')
 var leaderboard = [];
 var MAX_LENGTH = 10;
-var PERSISTENCE = 1000*60*60; // the time in ms a score will last
+var PERSISTENCE = 1000*60*60*2; // the time in ms a score will last
 var file = './leaderboard.json'
 jsonfile.readFile(file, function(err, obj) {
 	if(obj)
