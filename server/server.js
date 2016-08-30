@@ -342,6 +342,8 @@ function movePlayer(p, dt) {
 				board.blockId[x][y] = p.blockId * -1; // spawn "phantom" trail
 				board.blockTs[x][y] = lastUpdate;
 				isUnvisitedPosition = true;
+				if(p.specialAbility && p.specialAbility.onChangePosition)
+					p.specialAbility.onChangePosition(x,y,p);
 			}	
 			afterInterpolationMove(x,y,p,isUnvisitedPosition);
 		}
