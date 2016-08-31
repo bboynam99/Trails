@@ -27,11 +27,10 @@ Game.prototype.handleNetwork = function(socket) {
 		socket.emit('myNameIs', playerName);		
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
-			type: 3,
+			type: 5,
 			dt:0,
-			isH: false,
-			from: 14,to: 16,
-			exp: 2.25
+			exp: 2.25,
+			id: newPlayer.id
 		});*/
 
 	});
@@ -326,7 +325,8 @@ Game.prototype.handleGraphics = function(gfx) {
 	}
 	
 	// draw PU gui
-	drawPowerUpGUI(gfx,3*BLOCK_TO_PIXELS,3*BLOCK_TO_PIXELS,axisToSlots(player.slots),2*BLOCK_TO_PIXELS,true,true);
+	if(player.slots)
+		drawPowerUpGUI(gfx,3*BLOCK_TO_PIXELS,3*BLOCK_TO_PIXELS,axisToSlots(player.slots),2*BLOCK_TO_PIXELS,true,true);
 	
 	// draw player elimination
 	var offset = 0;
@@ -727,6 +727,11 @@ function updateGameObjects(dt) {
 				if(l.dt >= l.exp + LASER_PHASE3)
 					gameObjects.splice(i, 1);
 				break;
+			case 5: // buldoser blade
+				l.dt += dt;
+				if(l.dt >= l.exp)
+					gameObjects.splice(i, 1);
+				break;
 		}
 	}
 }
@@ -836,6 +841,25 @@ function drawGameObjects(gfx) {
 					drawLaser(gfx,l.dt,l.exp,false,s[0]-HALF_BLOCK_SIZE_DISPLAY,e[0]+HALF_BLOCK_SIZE_DISPLAY);
 				}
 				break;// end of Laser
+			case 5: // bulldozer blade
+				var p = getPlayerFromId(l.id);
+				if(p) {
+					gfx.fillStyle = '#e6e600';
+					gfx.strokeStyle = '#4d4d00';
+					gfx.lineWidth = 4;
+					if(p.dx == 0){
+						var ty = p.y + p.dy * 1.2 + p.size * p.dy;
+						var coords = boardToScreen(p.x,ty,true);
+						gfx.fillRect(coords[0]-BLOCK_TO_PIXELS*1.5, coords[1]-HALF_BLOCK_SIZE_DISPLAY, BLOCK_TO_PIXELS*3,BLOCK_TO_PIXELS);
+						gfx.strokeRect(coords[0]-BLOCK_TO_PIXELS*1.5, coords[1]-HALF_BLOCK_SIZE_DISPLAY, BLOCK_TO_PIXELS*3,BLOCK_TO_PIXELS);
+					}else if(p.dy == 0){
+						var tx = p.x + p.dx * 1.2 + p.size * p.dx;
+						var coords = boardToScreen(tx,p.y,true);
+						gfx.fillRect(coords[0]-HALF_BLOCK_SIZE_DISPLAY,coords[1]-BLOCK_TO_PIXELS*1.5, BLOCK_TO_PIXELS,BLOCK_TO_PIXELS*3);
+						gfx.strokeRect(coords[0]-HALF_BLOCK_SIZE_DISPLAY,coords[1]-BLOCK_TO_PIXELS*1.5, BLOCK_TO_PIXELS,BLOCK_TO_PIXELS*3);
+					}
+				}
+			break;
 		}
 		
 	});

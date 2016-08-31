@@ -7,10 +7,11 @@ module.exports = {
 	createLink,
 	createBlackHole,
 	createLaser,
-	createDoomsdayPhase
+	createDoomsdayPhase,
+	createBldzrBlade
 };
 
-var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -348,4 +349,24 @@ function createDoomsdayPhaseMap() {
 var phaseIdGenetator = 0;
 function getUniquePhaseId() {
 	return phaseIdGenetator++;
+}
+
+//
+// BULLDOSER BLADE
+//
+function createBldzrBlade(creator, duration) { // we do not keep a handle on this. Only the client needs to see it.
+	if(creator) {
+		//console.log('New link now channeling between ' + playerA.name + ' and ' + playerB.name);
+		var newBldzrBlade = {
+			type: BLDZR_ID,
+			isVisibleByPlayer: isLinkWithinRange,
+			toPlayerObject: function(){return {type: BLDZR_ID, id: creator.blockId, exp: duration}},
+			data: {creator:creator}
+		};
+		sendNewObject(newBldzrBlade);
+	}
+}
+
+function isLinkWithinRange(player,bld) {
+	return (Math.abs(bld.data.creator.x - player.x) + Math.abs(bld.data.creator.y - player.y)) < PLAYER_LOS_RANGE*1.5;
 }

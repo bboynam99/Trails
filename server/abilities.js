@@ -52,15 +52,17 @@ var abilities = [
 		}
 	},
 	{
-		name: 'Bulldozer blade', // TODO: add a fun visual
+		name: 'Bulldozer blade',
 		description: 'After teleporting, you also clear blocks in a small radius for a short duration.',
 		recipe: [-1,-2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onChangePosition: function(x,y,p) {
-			const BULLDZR_CLEARING_DURATION = 0.50; // the fraction on the CD that the effect lasts
 			const BULLDZR_RADIUS_CLEAR = 2;
 			//console.log(p.cooldown + '>=' + (p.maxCooldown * (1-BULLDZR_CLEARING_DURATION)))
 			if(p.cooldown >= p.maxCooldown * (1-BULLDZR_CLEARING_DURATION))
 				b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,BULLDZR_RADIUS_CLEAR);
+		},
+		onTeleportLanding: function(x,y,p) {
+			objects.createBldzrBlade(p,  p.maxCooldown * BULLDZR_CLEARING_DURATION);
 		}
 	},
 	{
@@ -339,6 +341,7 @@ var abilities = [
 		}
 	}
 ];
+const BULLDZR_CLEARING_DURATION = 0.50; // the fraction on the CD that the effect lasts
 
 // ability related functions:
 
