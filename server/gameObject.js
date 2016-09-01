@@ -8,10 +8,11 @@ module.exports = {
 	createBlackHole,
 	createLaser,
 	createDoomsdayPhase,
-	createBldzrBlade
+	createBldzrBlade,
+	createInvisPhase
 };
 
-var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5; INVIS_ID = 6;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -199,6 +200,8 @@ function updateLaser(obj, dt) {
 					board.blockId[i][j] = B_EMPTY;
 				}
 				if(playerBoard[i][j] != null && playerBoard[i][j] != obj.data.caster && !obj.data.caster.isDead && !playerBoard[i][j].isDead) {
+					if(obj.data.caster.phase != null ^ playerBoard[i][j].phase != null)
+						continue; // technically, we should also check if it's the same phase, but that's unlikely to happen, since players can't use PU in phases.
 					//console.log('found player '+playerBoard[i][j].name+' at position ('+i+','+j+') when searching in ('+X0+':'+X1+','+Y0+':'+Y1+')');
 					b.hasCrashedInto(obj.data.caster, playerBoard[i][j], 'You were eliminated by ' + obj.data.caster.name + '\'s power up ability.');
 				}
@@ -346,6 +349,73 @@ function createDoomsdayPhaseMap() {
 	return phaseBoard;
 }
 
+//
+// Invis phase
+//
+function createInvisPhase(creator, duration) {
+	if(!creator.isDead && creator.phase == null) {
+		var newIvisPhase = {
+			type: INVIS_ID,
+			update: updateInvisPhase,
+			isVisibleByPlayer: function(player,phase){return player.id == creator.id;}, // visible by creator only
+			data: {
+				ID: getUniquePhaseId(),
+				dt: 0,
+				interpolationMoveOverride: function(){},
+				replayLineOverride: function(){},
+				board: createInvisPhaseMap(),
+				creator: creator.id,
+				exp: duration
+			},
+			toPlayerObject: toClientInvis
+		};
+		gameObjects.push(newIvisPhase);
+		
+		b.changePhase(creator, newIvisPhase);
+	}
+	
+	console.log('Created new invis phase with ' + creator.name + ' inside.');
+}
+
+function toClientInvis(obj) {
+	return {
+		type: obj.type,
+		exp: obj.data.exp
+	};
+}
+
+function updateInvisPhase(obj,dt) {
+	obj.data.dt += dt;
+	
+	if(obj.data.dt >= obj.data.exp) {
+		var creator = users.find(function(p){return p.id == obj.data.creator});
+		if(creator){
+			b.clearAroundPoint(Math.round(creator.x),Math.round(creator.y),10);
+			b.unphase(creator);
+		}
+		removeObject(obj);
+	}
+}
+
+function createInvisPhaseMap() {
+	var phaseBoard = {
+		H: BOARD_H,
+		W: BOARD_W,
+		blockId: null
+	}
+	phaseBoard.blockId = new Array(phaseBoard.W);
+	for (var i=0;i<phaseBoard.W;i++) {
+		phaseBoard.blockId[i] = new Array(phaseBoard.H);
+		for (var j=0;j<phaseBoard.H;j++) {
+			if(board.blockId[i][j] != B_EMPTY)
+				phaseBoard.blockId[i][j] = B_BORDERS;
+			else
+				phaseBoard.blockId[i][j] = B_EMPTY
+		}
+	}
+	return phaseBoard;
+}
+
 var phaseIdGenetator = 0;
 function getUniquePhaseId() {
 	return phaseIdGenetator++;
@@ -370,3 +440,4 @@ function createBldzrBlade(creator, duration) { // we do not keep a handle on thi
 function isLinkWithinRange(player,bld) {
 	return (Math.abs(bld.data.creator.x - player.x) + Math.abs(bld.data.creator.y - player.y)) < PLAYER_LOS_RANGE*1.5;
 }
+

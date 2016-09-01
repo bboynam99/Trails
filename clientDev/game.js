@@ -13,6 +13,7 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	// this is where all socket messages are received
 	socket.on('playerSpawn', function (newPlayer, b) {
+		resetBoard();
 		queue = 0, queueMax = 0;
 		document.getElementById('powerups').innerHTML = ''; // clear powerup description
 		initBoard(b.boardW,b.boardH, b.LOS);
@@ -264,10 +265,14 @@ Game.prototype.handleGraphics = function(gfx) {
 	gfx.fillRect(0, 0, screenWidth, screenHeight);
 	var cx = screenWidth / 2;
 	var cy = screenHeight / 2;
-	if(currentPhaseType == NO_PHASE)
-		gfx.fillStyle = '#fbfcfc';
-	else
-		gfx.fillStyle = '#300';
+	switch(currentPhaseType) {
+		case NO_PHASE:
+		gfx.fillStyle = '#fbfcfc'; break;
+		case INVIS:
+		gfx.fillStyle = '#99ccff'; break;
+		case DOOMSDAY:
+		gfx.fillStyle = '#300'; break;
+	}
 		
 	var los = board.LOS * BLOCK_TO_PIXELS;
 	gfx.fillRect(cx - los, cy - los, 2*los, 2*los);
@@ -383,8 +388,17 @@ function initBoard(H,W,LOS){
 		}
 	}
 }
+function resetBoard(){
+	for (var i=0;i<board.W;i++) {
+		for (var j=0;j<board.H;j++) {
+			board.blockId[i][j] = EMPTY_BLOCK;
+			board.isPowerUp[i][j] = 0;
+		}
+	}
+}
+
 var gameOver = false;
-const NO_PHASE = 0, DOOMSDAY=4;
+const NO_PHASE = 0, INVIS=6, DOOMSDAY=4;
 var currentPhaseType = NO_PHASE;
 var queue = 0, queueMax = 0;
 var deathMessage = '';

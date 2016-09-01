@@ -22,7 +22,7 @@ var abilities = [
 	{
 		name: 'Point Vacuum',
 		description: 'After teleporting, you channel a ray on a nearby player in attempt to steal a large number of points.',
-		recipe: [-2,3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-1,2,-2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			const POINTS_VAC_STEAL_RATIO = 0.35; // the ratio of points stolen
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
@@ -39,7 +39,7 @@ var abilities = [
 	{
 		name: 'Safe Landing',
 		description: 'Your teleport clearing effect now also removes power ups in a large area.',
-		recipe: [0,3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,4,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			const LANDING_CLEAR_RADIUS = 8;
 			b.applyLogicAroundPosition(x,y,LANDING_CLEAR_RADIUS, function(x,y,result){
@@ -54,12 +54,12 @@ var abilities = [
 	{
 		name: 'Bulldozer blade',
 		description: 'After teleporting, you also clear blocks in a small radius for a short duration.',
-		recipe: [-1,-2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [1,-2,1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onChangePosition: function(x,y,p) {
-			const BULLDZR_RADIUS_CLEAR = 2;
+			const BULLDZR_RADIUS_CLEAR = 3;
 			//console.log(p.cooldown + '>=' + (p.maxCooldown * (1-BULLDZR_CLEARING_DURATION)))
 			if(p.cooldown >= p.maxCooldown * (1-BULLDZR_CLEARING_DURATION))
-				b.clearAroundPoint(x + Math.sign(p.dx)*2,y + Math.sign(p.dy)*2,BULLDZR_RADIUS_CLEAR);
+				b.clearAroundPoint(x + Math.sign(p.dx)*BULLDZR_RADIUS_CLEAR,y + Math.sign(p.dy)*BULLDZR_RADIUS_CLEAR,BULLDZR_RADIUS_CLEAR);
 		},
 		onTeleportLanding: function(x,y,p) {
 			objects.createBldzrBlade(p,  p.maxCooldown * BULLDZR_CLEARING_DURATION);
@@ -68,7 +68,7 @@ var abilities = [
 	{
 		name: 'Chameleon Device',
 		description: 'After teleporting, channel a ray on a nearby player in attempt to steal their color.',
-		recipe: [2,3,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,1,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 			if(nearestPlayer != null) // create link if possible
@@ -83,7 +83,7 @@ var abilities = [
 	{
 		name: 'C-4',
 		description: 'When your teleport is ready, the next wall you hit will cause a large clearing effect and trigger a short cooldown.',
-		recipe: [3,-3,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [2,-2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			const C4_CD = 2; // the cooldown triggered
 			if(p.cooldown > 0)
@@ -113,7 +113,7 @@ var abilities = [
 	{
 		name: 'Air Bags',
 		description: 'Crashing into a wall will cause you to lose some points instead of eliminating you.',
-		recipe: [-3,-2,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-2,-2,1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			b.clearAroundPoint(x,y,1);
 			p.pts -= Math.max(250,p.pts*.15);
@@ -123,7 +123,7 @@ var abilities = [
 	{
 		name: 'Switch-A-Roo',
 		description: 'After teleporting, channel a ray on a nearby player to switch position and color.',
-		recipe: [1,3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [1,2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,10,p);
 			if(nearestPlayer != null) // create link if possible
@@ -163,7 +163,7 @@ var abilities = [
 	{
 		name: 'Improved Teleport',
 		description: 'Greatly reduces the cooldown on your teleport at the cost of points.',
-		recipe: [3,3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [2,1,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		afterCacheStatsLogic: function(p) {
 			p.maxCooldown = 0.15;
 		},
@@ -174,7 +174,7 @@ var abilities = [
 	{
 		name: 'E.M.P.',
 		description: 'Clears the entire map (20 second cooldown). Replaces teleport.',
-		recipe: [2,-4,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,-3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			b.clearEntireBoard(); // TODO: add a fun visual effect
 			b.triggerCooldown(p, 20);
@@ -184,7 +184,7 @@ var abilities = [
 	{
 		name: 'Quick Escape',
 		description: 'Your teleport triggers automatically when you hit a wall. Greatly lowers the cooldown.',
-		recipe: [3,0,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [3,0,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
 			if(p.cooldown > 0){
 				return false;
@@ -203,7 +203,7 @@ var abilities = [
 	{
 		name: 'Entrenchment',
 		description: 'Clear everything in a large area around you, surrounding you with a thin wall (12 sec cd). Replaces teleport.',
-		recipe: [0,-3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,-1,-2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			const ENTRCH_CD = 12;
 			const ENTRCH_RADIUS = 12;
@@ -228,7 +228,7 @@ var abilities = [
 	{
 		name: 'Bonus Points',
 		description: 'Picking up additional green power ups provides bonus points.',
-		recipe: [-3,2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-4,0,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		powerUpPickupOverride: function(p,type) {
 			if(type == PU_ID_POINTS) { // green or yellow
 				p.pts += 150;
@@ -240,7 +240,7 @@ var abilities = [
 	{
 		name: 'Recycling Device',
 		description: 'Gain bonus points for every block you clear by teleporting.',
-		recipe: [-3,-3,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-2,-2,-1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportLandingOverride: function(p) {
 			var r = TELE_CLEAR_RADIUS + Math.max(0,p.slotsAxis[PU_TO_AXIS[PU_ID_TELEAOE-1]] * PU_DIR[PU_ID_TELEAOE-1]) * PU_TELE_AOE;
 			
@@ -262,7 +262,7 @@ var abilities = [
 	{
 		name: 'Point ray',
 		description: 'Channel a ray on a nearby player in attempt to steal a large number of points. Replaces teleport.',
-		recipe: [-3,1,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-2,0,-1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			if(p.cooldown > 0)
 				return;
@@ -285,7 +285,7 @@ var abilities = [
 	{
 		name: 'Stealing Ray',
 		description: 'After teleporting, channel a ray in attempt to steal all of another player\'s power ups.',
-		recipe: [3,2,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [-1,2,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
@@ -303,7 +303,7 @@ var abilities = [
 	{
 		name: 'Black Hole',
 		description: 'Before teleporting, drop a black hole, attracting nearby players for a few seconds. Increases the cooldown.',
-		recipe: [3,-1,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [3,0,-1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p,ox,oy) {
 			objects.createBlackHole(ox,oy,7.0);//duration
 		},
@@ -314,7 +314,7 @@ var abilities = [
 	{
 		name: 'Laser Beam',
 		description: 'Trigger a laser beam that clears an entire line, eliminating players in the process (15s cd). Replaces teleport.',
-		recipe: [0,-2,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [0,-2,2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p,ox,oy) {
 			if(p.dx != 0)
 				objects.createLaser(p,true,y,1,2.25);
@@ -328,7 +328,7 @@ var abilities = [
 	{
 		name: 'Doomsday Device',
 		description: 'Trigger a Doomsday clock. The last player to find shelter dies. This consumes your power ups in the process. Replaces teleport.',
-		recipe: [3,-2,-3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		recipe: [2,-1,-2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
 			objects.createDoomsdayPhase(p, function() { // creator gets out function
 				// clear power ups
@@ -338,6 +338,16 @@ var abilities = [
 			
 			b.triggerCooldown(p, 1);
 			sockets[p.id].emit('trCd', 1);			
+		}
+	},
+	{
+		name: 'Cloaking Device',
+		description: 'Temporarily shift into another dimension, rendering you invisible and invincible (16 sec cd). Replaces teleport.',
+		recipe: [0,0,3], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
+		teleportOverride: function(p) {
+			objects.createInvisPhase(p, 5); //duration
+			b.triggerCooldown(p, 16);
+			sockets[p.id].emit('trCd', 16);			
 		}
 	}
 ];
