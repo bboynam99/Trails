@@ -1,8 +1,8 @@
 //
 /** Game Constants **/
 //
-global.BOARD_W = 80;
-global.BOARD_H = 80;
+global.BOARD_W = 200;
+global.BOARD_H = 200;
 global.PLAYER_LOS_RANGE = 25;
 global.SPAWN_SPACE_NEEDED = 10;
 global.INITIAL_VELOCITY = 7.0;
