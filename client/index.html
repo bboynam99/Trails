@@ -28,38 +28,38 @@
 		<div class="modal-content">
 		<span class="close">x</span>
 			<div id='part1'>
-				<p>You are a cube with a trail. Use the <b>arrow keys</b> to <b>turn</b>. You cannot turn 180°.</p>
+				<p>You are a cube with a trail. Use the <b>arrow keys</b> to <b>turn</b>.<br /> You cannot turn 180°.</p>
 				<img src="./img/tutorial/1.gif" />
 				<button class="button" id="nextButton1">Next</button>
 			</div>
-			<div id='part2' hidden>
-				<p>Use spacebar to <b>teleport</b> and avoid obstacles. Teleporting will also clear blocks around the landing area. This will trigger a short cooldown.</p>
+			<div id='part2' style="display:none">
+				<p>Use spacebar to <b>teleport</b> and avoid obstacles.<br /> Teleporting will also <b>clear blocks</b> around the landing area.<br /> This will trigger a short <b>cooldown</b>.</p>
 				<img src="./img/tutorial/2.gif" />
 				<button class="button" id="nextButton2">Got it!</button>
 			</div>
-			<div id='part3' hidden>
+			<div id='part3' style="display:none">
 				<p><b>Crashing</b> into other trails will eliminate you.</p>
 				<img src="./img/tutorial/3.gif" />
-				<button class="button" id="nextButton3">Mhm</button>
+				<button class="button" id="nextButton3">Mhm..</button>
 			</div>
-			<div id='part4' hidden>
-				<p>Your <b>own trail</b> will not eliminate you right away, but will cause you to lose points until you reach 0 points and lose.</p>
+			<div id='part4' style="display:none">
+				<p>Your <b>own trail</b> will not eliminate you right away, but will cause you<br /> to lose points until you run out of points and lose.</p>
 				<img src="./img/tutorial/4.gif" />
 				<button class="button" id="nextButton4">Tell me more...</button>
 			</div>
-			<div id='part5' hidden>
-				<p>Survive and gain as many points as possible. As you gain points, you <b>grow</b>, but also move <b>slower</b>.</p>
+			<div id='part5' style="display:none">
+				<p>Gain points by <b>surviving</b> as long as possible. <br /> As you gain points, you <b>grow</b> in size, but also move progressively <b>slower</b>.</p>
 				<img src="./img/tutorial/5.gif" />
 				<button class="button" id="nextButton5">Where is this going?</button>
 			</div>
-			<div id='part6' hidden>
+			<div id='part6' style="display:none">
 				<p>Pickup <b>power ups</b> to become stronger.</p>
 				<img src="./img/tutorial/6.gif" />
-				<button class="button" id="nextButton6">Okay</button>
+				<button class="button" id="nextButton6">Carry on...</button>
 			</div>
-			<div id='part7' hidden>
+			<div id='part7' style="display:none">
 				<p>Power ups provide an instant passive bonus:</p>
-				<ol>
+				<ol style="text-align:left">
 					<li> <b>Green</b>: gain and lose points faster. </li>
 					<li> <b>Red</b>: move faster. </li>
 					<li> <b>Orange</b>: teleport further. </li>
@@ -69,8 +69,8 @@
 				</ol>
 				<button class="button" id="nextButton7">Keep going...</button>
 			</div>
-			<div id='part8' hidden>
-				<p>Special combination of power ups will unlock <b>special abilities</b>. You can keep track of your Power Ups in the top left corner of the screen.</p>
+			<div id='part8' style="display:none">
+				<p>Special combinations of power ups will unlock <b>special abilities</b>.<br /> You can keep track of your Power Ups in the top left corner of the screen.</p>
 				<img src="./img/tutorial/7.gif" />
 				<p>
 					<i>Note: Some power up colors are mutually exclusive. chose your power ups carefully:<br/>
@@ -112,16 +112,16 @@
 		}
 		
 		var selectedDiv = 1;
-		const MAXDIV = 7;
+		const MAXDIV = 8;
 		function nextDiv() {
-			document.getElementById('part' + selectedDiv).style.visibility = false;
-			selectedDiv++;
-			document.getElementById('part' + selectedDiv).style.visibility = true;
+			document.getElementById('part' + selectedDiv).style.display = 'none';
+			selectedDiv = (selectedDiv % MAXDIV)+1;
+			document.getElementById('part' + selectedDiv).style.display = 'block';
 		}
-		for (var i=1;i<=MAXDIV;i++){
-			document.getElementById("nextButton"+i).onclick = function(){document.getElementById('part1').style.visibility = false;};
+		for (var i=1;i<MAXDIV;i++){
+			document.getElementById("nextButton"+i).onclick = nextDiv;
 		}
-		document.getElementById("nextButton"+(MAXDIV+1)).onclick = function(){selectedDiv=1; modal.style.display = "none";};
+		document.getElementById("nextButton"+MAXDIV).onclick = function(){nextDiv(); var modal = document.getElementById('tutorialBox'); modal.style.display = "none";};
 	</script>
 </body>
 </html>
