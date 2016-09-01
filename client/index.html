@@ -14,34 +14,114 @@
     </div>
     <div id="startMenuWrapper">
         <div id="startMenu">
+			<img src="./img/logo.gif" />
             <p>Welcome to Trails.lol</p>
             <input type="text" tabindex="0" autofocus placeholder="Enter your name here" id="playerNameInput" />
-            <b class="input-error">Nick name must be 15 alphanumeric characters or less.</b>
+            <b class="input-error">Nickname must be 15 alphanumeric characters or less.</b>
             <br />
-            <button id="startButton">Play</button>
+            <button id="startButton" class="button">Play</button>
 			<br />
-			<h3>Instructions:</h3>
-			<ol>
-				<li> <b>Arrow keys</b> to turn.</li>
-				<li> <b>Space bar</b> to teleport.</li>
-				<li> Other trails <b>kill you</b>.</li>
-				<li> Avoid your <b>own</b> trails.</li>
-				<li> Become <b>larger</b> with more points, but also <b>slower</b>. </li>
-			</ol>
-			<h3>Power ups: </h3>
-			<ol>
-				<li> <b>Green</b>: gain and lose points faster. </li>
-				<li> <b>Red</b>: move faster. </li>
-				<li> <b>Orange</b>: teleport further. </li>
-				<li> <b>Yellow</b>: lose less points on your trail. </li>
-				<li> <b>Blue</b>: clear more blocks when teleporting. </li>
-				<li> <b>Purple</b>: teleport more often.</li>
-			</ol>
-			<h3>Some power up combos will modify your <b>teleport</b> ability!</h3>
+			<button id="tutorialButton" class="button">How to play?</button>
         </div>
     </div>
+	<div id="tutorialBox" class="modal" >
+		<div class="modal-content">
+		<span class="close">x</span>
+			<div id='part1'>
+				<p>You are a cube with a trail. Use the <b>arrow keys</b> to <b>turn</b>. You cannot turn 180°.</p>
+				<img src="./img/tutorial/1.gif" />
+				<button class="button" id="nextButton1">Next</button>
+			</div>
+			<div id='part2' hidden>
+				<p>Use spacebar to <b>teleport</b> and avoid obstacles. Teleporting will also clear blocks around the landing area. This will trigger a short cooldown.</p>
+				<img src="./img/tutorial/2.gif" />
+				<button class="button" id="nextButton2">Got it!</button>
+			</div>
+			<div id='part3' hidden>
+				<p><b>Crashing</b> into other trails will eliminate you.</p>
+				<img src="./img/tutorial/3.gif" />
+				<button class="button" id="nextButton3">Mhm</button>
+			</div>
+			<div id='part4' hidden>
+				<p>Your <b>own trail</b> will not eliminate you right away, but will cause you to lose points until you reach 0 points and lose.</p>
+				<img src="./img/tutorial/4.gif" />
+				<button class="button" id="nextButton4">Tell me more...</button>
+			</div>
+			<div id='part5' hidden>
+				<p>Survive and gain as many points as possible. As you gain points, you <b>grow</b>, but also move <b>slower</b>.</p>
+				<img src="./img/tutorial/5.gif" />
+				<button class="button" id="nextButton5">Where is this going?</button>
+			</div>
+			<div id='part6' hidden>
+				<p>Pickup <b>power ups</b> to become stronger.</p>
+				<img src="./img/tutorial/6.gif" />
+				<button class="button" id="nextButton6">Okay</button>
+			</div>
+			<div id='part7' hidden>
+				<p>Power ups provide an instant passive bonus:</p>
+				<ol>
+					<li> <b>Green</b>: gain and lose points faster. </li>
+					<li> <b>Red</b>: move faster. </li>
+					<li> <b>Orange</b>: teleport further. </li>
+					<li> <b>Yellow</b>: lose less points on your trail. </li>
+					<li> <b>Blue</b>: clear more blocks when teleporting. </li>
+					<li> <b>Purple</b>: teleport more often.</li>
+				</ol>
+				<button class="button" id="nextButton7">Keep going...</button>
+			</div>
+			<div id='part8' hidden>
+				<p>Special combination of power ups will unlock <b>special abilities</b>. You can keep track of your Power Ups in the top left corner of the screen.</p>
+				<img src="./img/tutorial/7.gif" />
+				<p>
+					<i>Note: Some power up colors are mutually exclusive. chose your power ups carefully:<br/>
+						red vs green<br/>purple vs yellow<br/>blue vs orange.</i>
+				</p>
+				<button class="button" id="nextButton8">Let's give this a shot!</button>
+			</div>
+		</div>
+	</div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="./js/game.js"></script>
     <script src="./js/app.js"></script>
+	<script>		
+		// Get the modal
+		var modal = document.getElementById('tutorialBox');
+
+		// Get the button that opens the modal
+		var btn = document.getElementById("tutorialButton");
+
+		// Get the <span> element that closes the modal
+		var span = document.getElementsByClassName("close")[0];
+
+		// When the user clicks on the button, open the modal 
+		btn.onclick = function() {
+			modal.style.display = "block";
+		}
+
+		// When the user clicks on <span> (x), close the modal
+		span.onclick = function() {
+			modal.style.display = "none";
+		}
+
+		// When the user clicks anywhere outside of the modal, close it
+		window.onclick = function(event) {
+			if (event.target == modal) {
+				modal.style.display = "none";
+			}
+		}
+		
+		var selectedDiv = 1;
+		const MAXDIV = 7;
+		function nextDiv() {
+			document.getElementById('part' + selectedDiv).style.visibility = false;
+			selectedDiv++;
+			document.getElementById('part' + selectedDiv).style.visibility = true;
+		}
+		for (var i=1;i<=MAXDIV;i++){
+			document.getElementById("nextButton"+i).onclick = function(){document.getElementById('part1').style.visibility = false;};
+		}
+		document.getElementById("nextButton"+(MAXDIV+1)).onclick = function(){selectedDiv=1; modal.style.display = "none";};
+	</script>
 </body>
 </html>
