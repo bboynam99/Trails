@@ -123,6 +123,7 @@ io.on('connection', function (socket) {
 	
 	socket.on('respawnRequest', function () {
 		if(player.isDead) {
+			player.desyncCounter = 0;
 			var spawnPosition = findGoodSpawn();
 			player.x = spawnPosition[0];
 			player.y = spawnPosition[1];
