@@ -53,7 +53,8 @@ io.on('connection', function (socket) {
 		desyncCounter: 0, // the cumulated delta between client and server
 		slotsAxis: Array.apply(null, Array(NUM_AXIS)).map(Number.prototype.valueOf,0),
 		specialAbility: undefined,
-		phase: undefined
+		phase: undefined,
+		hasReceivedMvYet: false
 	};
 	board.colorsLUT[player.blockId] = player.hue;
 	blockIdLUT[blockIdGenerator] = player;
@@ -67,7 +68,7 @@ io.on('connection', function (socket) {
 	}
 
 	socket.on('myNameIs', function (name) {
-		if(!name || !validNick(name)){
+		if(!name || !typeof myVar === 'string' || !validNick(name)){
 			b.killPlayer(player, 'invalid name', 'Your name was invalid.'); 
 			socket.disconnect();
 		}
@@ -78,6 +79,14 @@ io.on('connection', function (socket) {
 
 		
 	socket.on('mv', function (newInfo) {
+		// validation
+		if(newInfo == null || newInfo.x == null || !typeof newInfo.x == 'number'
+			|| newInfo.y == null || !typeof newInfo.y == 'number'
+			|| newInfo.dx == null || !typeof newInfo.dx == 'number'
+			|| newInfo.dy == null  || !typeof newInfo.dy == 'number'){
+				return;
+			}
+			
 		//console.log('moving from ('+player.x+','+player.y+') to ('+newInfo.x+','+newInfo.y+') with delta ('+player.dx+','+player.dy+') and velocity '+player.velocity)
 		if(!player.isDead) {
 			player.bestPts = Math.max(player.bestPts,player.pts);//update pts
@@ -85,10 +94,13 @@ io.on('connection', function (socket) {
 			player.dy = newInfo.dy;
 		
 			// check if new position is reasonable. If sketchy, close socket.
-			var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
-			var clientTravelTime = (Math.abs(newInfo.x - player.lastX) + Math.abs(newInfo.y - player.lastY)) / player.velocity;
-			var desyc = serverTravelTime - clientTravelTime;
-			player.desyncCounter += (Math.abs(desyc) > 0.1 ? desyc : 0);
+			if(player.hasReceivedMvYet) {
+				var serverTravelTime = (Math.abs(player.x - player.lastX) + Math.abs(player.y - player.lastY)) / player.velocity;
+				var clientTravelTime = (Math.abs(newInfo.x - player.lastX) + Math.abs(newInfo.y - player.lastY)) / player.velocity;
+				var desyc = serverTravelTime - clientTravelTime;
+				player.desyncCounter += (Math.abs(desyc) > 0.1 ? desyc : 0);
+			} else
+				hasReceivedMvYet = true;
 			
 			var x = player.lastX, y = player.lastY;
 			var nx = Math.round(newInfo.x), ny = Math.round(newInfo.y);
@@ -125,6 +137,7 @@ io.on('connection', function (socket) {
 		if(player.isDead) {
 			player.desyncCounter = 0;
 			var spawnPosition = findGoodSpawn();
+			player.hasReceivedMvYet = false;
 			player.x = spawnPosition[0];
 			player.y = spawnPosition[1];
 			player.lastX = spawnPosition[0];
@@ -137,6 +150,12 @@ io.on('connection', function (socket) {
 		}
     });
 	socket.on('teleport', function(x,y,dx,dy) {
+		if(x == null || !typeof x === 'number' //validation
+			|| y == null || !typeof y === 'number'
+			|| dx == null || !typeof dx === 'number'
+			|| dx == null || !typeof dy === 'number')
+			return;
+			
 		if(player.cooldown > 1) { // is CD ready? I hope so!
 			b.killPlayer(player, 'used a powerup while still ' + player.cooldown + 's remain on CD', 'You were out of sync with the server :(');
 		} else if(player.specialAbility && player.specialAbility.teleportOverride) { // does the power up override the default behavior?
@@ -218,104 +237,172 @@ function gameloop() {
 }
 
  // client side constants (proudly copy pasted)
-var EMPTY_BLOCK = -1;
-var SIDE_WALL = -2;
-var PHASE_EXIT = -3;
+const EMPTY_BLOCK = -1;
+const SIDE_WALL = -2;
+const PHASE_EXIT = -3;
+const MIN_BLOC_VAL = PHASE_EXIT; //TODO ALWAYS UPDATE THIS.
 
+/*function sendUpdatesBoard() {
+	users.forEach( function(u) {
+		try {
+			if (!u.isDead) {
+				var boardToUse = u.phase?u.phase.data.board:board;
+				// update walls
+				var x = Math.round(u.x); var y = Math.round(u.y);
+				losX0 = Math.max(x - PLAYER_LOS_RANGE,1);
+				losX1 = Math.min(x + PLAYER_LOS_RANGE, boardToUse.W-1);
+				losY0 = Math.max(y - PLAYER_LOS_RANGE,1);
+				losY1 = Math.min(y + PLAYER_LOS_RANGE, boardToUse.H-1);
+				var newBoard = {
+					blockId: null,
+					colors: null,
+					isPowerUp: null,
+					x0: losX0,
+					x1: losX1,
+					y0: losY0,
+					y1: losY1
+				};
+				if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // sometimes players are outside, but not dead yet (not sure why)
+					var colors = {};
+					newBoard.blockId = new Array(losX1-losX0);
+					newBoard.isPowerUp = new Array(losX1-losX0);
+					for (var i=0;i<losX1-losX0;i++) {
+						newBoard.blockId[i] = new Array(losY1-losY0);
+						newBoard.isPowerUp[i] = new Array(losY1-losY0);
+						for (var j=0;j<losY1-losY0;j++) {
+							// this is for board and colors
+							var id = boardToUse.blockId[i+losX0][j+losY0];
+							newBoard.blockId[i][j] = EMPTY_BLOCK;
+							var c = blockIdLUT[Math.abs(id)];
+							if(c) {
+								newBoard.blockId[i][j] = c.hue;
+								colors[c.hue] = true;
+							} else if (id == B_BORDERS) {
+								newBoard.blockId[i][j] = SIDE_WALL;
+							} else if (id == DMSDY_EXIT) {
+								newBoard.blockId[i][j] = PHASE_EXIT;
+							}
+							
+							// this is for power ups
+							if(boardToUse.isPowerUp)
+								newBoard.isPowerUp[i][j] = board.isPowerUp[i+losX0][j+losY0];
+						}
+					}
+					newBoard.colors = Object.keys(colors);
+
+					sockets[u.id].emit('upBr', newBoard);
+				}
+			}
+		} catch(ex) {
+			console.log('error while trying to send board update to ' + u.name + ':' + ex);
+		}
+	});
+}*/
+const B64 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/";
 function sendUpdatesBoard() {
 	users.forEach( function(u) {
-		if (!u.isDead) {
-			var boardToUse = u.phase?u.phase.data.board:board;
-			// update walls
-			var x = Math.round(u.x); var y = Math.round(u.y);
-			losX0 = Math.max(x - PLAYER_LOS_RANGE,0);
-			losX1 = Math.min(x + PLAYER_LOS_RANGE, boardToUse.W);
-			losY0 = Math.max(y - PLAYER_LOS_RANGE,0);
-			losY1 = Math.min(y + PLAYER_LOS_RANGE, boardToUse.H);
-			var newBoard = {
-				isBlock: null,
-				colors: null,
-				isPowerUp: null,
-				x0: losX0,
-				x1: losX1,
-				y0: losY0,
-				y1: losY1
-			};
-			if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // sometimes players are outside, but not dead yet (not sure why)
-				var colors = {};
-				newBoard.blockId = new Array(losX1-losX0);
-				newBoard.isPowerUp = new Array(losX1-losX0);
-				for (var i=0;i<losX1-losX0;i++) {
-					newBoard.blockId[i] = new Array(losY1-losY0);
-					newBoard.isPowerUp[i] = new Array(losY1-losY0);
-					for (var j=0;j<losY1-losY0;j++) {
-						// this is for board and colors
-						var id = boardToUse.blockId[i+losX0][j+losY0];
-						newBoard.blockId[i][j] = EMPTY_BLOCK;
-						var c = blockIdLUT[Math.abs(id)];
-						if(c) {
-							newBoard.blockId[i][j] = c.hue;
-							colors[c.hue] = true;
-						} else if (id == B_BORDERS) {
-							newBoard.blockId[i][j] = SIDE_WALL;
-						} else if (id == DMSDY_EXIT) {
-							newBoard.blockId[i][j] = PHASE_EXIT;
-						}
-						
-						// this is for power ups
-						if(boardToUse.isPowerUp)
-							newBoard.isPowerUp[i][j] = board.isPowerUp[i+losX0][j+losY0];
-					}
-				}
-				newBoard.colors = Object.keys(colors);
+		try {
+			if (!u.isDead) {
+				var boardToUse = u.phase?u.phase.data.board:board;
+				// update walls
+				var x = Math.round(u.x); var y = Math.round(u.y);
+				losX0 = Math.max(x - PLAYER_LOS_RANGE,1);
+				losX1 = Math.min(x + PLAYER_LOS_RANGE, boardToUse.W-1);
+				losY0 = Math.max(y - PLAYER_LOS_RANGE,1);
+				losY1 = Math.min(y + PLAYER_LOS_RANGE, boardToUse.H-1);
+				var newBoard = {
+					isBlock: '',
+					colors: {},
+					isPowerUp: [],
+					pos: [losX0,losX1,losY0,losY1]
+				};
 
-				sockets[u.id].emit('upBr', newBoard);
+				var curId = 0;
+				var colorId2code64 = {};
+				function getMappingIdFromColorCode(code){
+					if(!colorId2code64[code])
+						colorId2code64[code] = B64[curId++];
+					return colorId2code64[code];
+				}
+				
+				if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // sometimes players are outside, but not dead yet (not sure why)
+					for (var i=0;i<losX1-losX0;i++) {
+						for (var j=0;j<losY1-losY0;j++) {
+							// find the color code
+							var id = boardToUse.blockId[i+losX0][j+losY0];
+							var code;
+							if(id == B_EMPTY) {
+								code = EMPTY_BLOCK;
+							} else if (id == B_BORDERS) {
+								code = SIDE_WALL;
+							} else if (id == DMSDY_EXIT) {
+								code = PHASE_EXIT;
+							} else {
+								code = blockIdLUT[Math.abs(id)].hue;
+							}
+							newBoard.isBlock += getMappingIdFromColorCode(code);
+							if(boardToUse.isPowerUp && boardToUse.isPowerUp[i][j] > PU_ID_NONE)
+								newBoard.isPowerUp.push([i,j,boardToUse.isPowerUp[i][j]]);
+						}
+					}
+					// invert LUT for easy decoding
+					Object.keys(colorId2code64).forEach(function(o){
+						newBoard.colors[colorId2code64[o]] = o;
+					});
+					sockets[u.id].emit('upBr', newBoard);
+				}
 			}
+		} catch(ex) {
+			console.log('error while trying to send board update to ' + u.name + ':' + ex);
 		}
 	});
 }
 function sendUpdatesPlayers() {
 	users.forEach( function(u) {
 		if (!u.isDead) {
-			// update walls
-			var x = Math.round(u.x); var y = Math.round(u.y);
-			losX0 = Math.max(x - PLAYER_LOS_RANGE,0);
-			losX1 = Math.min(x + PLAYER_LOS_RANGE, board.W-1);
-			losY0 = Math.max(y - PLAYER_LOS_RANGE,0);
-			losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H-1);
+			try {
+				// update walls
+				var x = Math.round(u.x); var y = Math.round(u.y);
+				losX0 = Math.max(x - PLAYER_LOS_RANGE,0);
+				losX1 = Math.min(x + PLAYER_LOS_RANGE, board.W-1);
+				losY0 = Math.max(y - PLAYER_LOS_RANGE,0);
+				losY1 = Math.min(y + PLAYER_LOS_RANGE, board.H-1);
 
-			var otherPlayers = [];
+				var otherPlayers = [];
 
-			for (var i=0;i<=losX1-losX0;i++) {
-				for (var j=0;j<=losY1-losY0;j++) {
-					if(playerBoard[i+losX0][j+losY0]) {
-						o = playerBoard[i+losX0][j+losY0];
-						if(!o.isDead && o.id != u.id && o.phase == u.phase) {
-							otherPlayers.push({
-								id: o.blockId,
-								x: o.x,
-								y: o.y,
-								dx:o.dx,
-								dy:o.dy,
-								velocity:o.velocity,
-								hue: o.hue,
-								name: o.name,
-								pts: o.pts,
-								dpts: o.dpts,
-								slotsAxis: o.slotsAxis
-							});
+				for (var i=0;i<=losX1-losX0;i++) {
+					for (var j=0;j<=losY1-losY0;j++) {
+						if(playerBoard[i+losX0][j+losY0]) {
+							o = playerBoard[i+losX0][j+losY0];
+							if(!o.isDead && o.id != u.id && o.phase == u.phase) {
+								otherPlayers.push({
+									id: o.blockId,
+									x: o.x,
+									y: o.y,
+									dx:o.dx,
+									dy:o.dy,
+									velocity:o.velocity,
+									hue: o.hue,
+									name: o.name,
+									pts: o.pts,
+									dpts: o.dpts,
+									slotsAxis: o.slotsAxis
+								});
+							}
 						}
 					}
 				}
-			}
-			var selfPlayer = {
-				velocity:u.velocity,
-				pts: u.pts,
-				dpts: u.dpts,
-				slots: u.slotsAxis
-			};
-							
-			sockets[u.id].emit('upPl', otherPlayers, selfPlayer);
+				var selfPlayer = {
+					velocity:u.velocity,
+					pts: u.pts,
+					dpts: u.dpts,
+					slots: u.slotsAxis
+				};
+								
+				sockets[u.id].emit('upPl', otherPlayers, selfPlayer);
+			} catch(ex) {
+				console.log('error while trying to send player updates to ' + u.name + ':' + ex);
+			}	
 		}
 	});
 }
@@ -524,17 +611,21 @@ function pickupPowerUp(player, powerUpType) {
 // this function kicks players that are out of synch with the game clock.
 function checkSync() {
 	users.forEach( function(u) {
-		if(!u.isDead) {
-			// check lag status
-			if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
-				b.killPlayer(u, 'Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE, 'You were out of sync with the server :(');
-			} else if(Math.abs(u.desyncCounter) > DESYNC_TOLERENCE) {
-				console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + DESYNC_TOLERENCE);
-				forceResync(u);
+		try{
+			if(!u.isDead) {
+				// check lag status
+				if(Math.abs(u.desyncCounter) > MAX_DESYNC_TOLERENCE) {
+					b.killPlayer(u, 'Kicked player because desync was ' + u.desyncCounter + ', which is greater than ' + MAX_DESYNC_TOLERENCE, 'You were out of sync with the server :(');
+				} else if(Math.abs(u.desyncCounter) > DESYNC_TOLERENCE) {
+					console.log('Forced resync with ' + u.name + ' because desync was ' + u.desyncCounter + ', which is greater than ' + DESYNC_TOLERENCE);
+					forceResync(u);
+				}
+				// forgive the player a bit
+				u.desyncCounter *= 0.95;
+				
 			}
-			// forgive the player a bit
-			u.desyncCounter *= 0.95;
-			
+		} catch(ex){
+			console.log('error while trying to check sync with ' + u.name + ':' + ex);
 		}
 	});
 }

@@ -49,22 +49,31 @@ Game.prototype.handleNetwork = function(socket) {
 	});
 	
 	socket.on('upBr', function (newBoard) {
-		for (var i=newBoard.x0;i<newBoard.x1;i++) {
-			for (var j=newBoard.y0;j<newBoard.y1;j++) { // update xp and board
-				// power ups if there are some
-				if(newBoard.isPowerUp)
-					board.isPowerUp[i][j] = newBoard.isPowerUp[i-newBoard.x0][j-newBoard.y0];
-				else
-					board.isPowerUp[i][j] = 0;
+		var id=0;
+		for (var i=newBoard.pos[0];i<newBoard.pos[1];i++) {
+			for (var j=newBoard.pos[2];j<newBoard.pos[3];j++) { // update xp and board
+				board.isPowerUp[i][j] = 0;
 				// the board state
-				board.blockId[i][j] = newBoard.blockId[i-newBoard.x0][j-newBoard.y0]; 
+				board.blockId[i][j] = newBoard.colors[newBoard.isBlock[id]]; 
+				id++;
 			}
 		}
+		// power ups if there are some
+		if(newBoard.isPowerUp.length > 0)
+			newBoard.isPowerUp.forEach(function(a){
+				board.isPowerUp[a[0]][a[1]] = a[2];
+			});
+				
 		// overide with short term client knowledge (to avoid flicker)
-		lastFewBlocks.forEach( function(p) {
+		lastFewBlocks.forEach(function(p) {
 			board.blockId[p[0]][p[1]] = player.hue;
 		});
-		colors = newBoard.colors;
+		colors = [];
+		for(var key in newBoard.colors) {
+			var c = newBoard.colors[key];
+			if(c >= 0)
+				colors.push(newBoard.colors[key]);
+		}
 	});
 	
 	socket.on('upPl', function (updatedPlayers, selfUpdate) {
@@ -167,6 +176,8 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	socket.on('unphase', function () {
 		currentPhaseType = NO_PHASE;
+		lastFewBlocks = [];
+		lastFewBlocksId = 0; 
 	});	
 }
 
@@ -244,8 +255,8 @@ Game.prototype.handleGraphics = function(gfx) {
 	if(gameOver) {
 		gfx.fillStyle = '#fbfcfc';
 		gfx.fillRect(0, 0, screenWidth, screenHeight);
-		gfx.fillStyle = '#2ecc71';
-		gfx.strokeStyle = '#27ae60';
+		gfx.fillStyle = '#f99';
+		gfx.strokeStyle = '#900';
 		gfx.font = 'bold 50px Verdana';
 		gfx.textAlign = 'center';
 		gfx.lineWidth = 2;
@@ -368,7 +379,7 @@ var board = {
 var colors = []; // contains all colors to be drawn, received from server.
 var gameObjects = [];
 var lastFewBlocks = []; //client will always trust itself for board state of these pts
-var lastFewBlocksId = 0; const FEW_BLOCKS_LENGTH = 10;
+var lastFewBlocksId = 0; const FEW_BLOCKS_LENGTH = 5;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 var updateSize = [];
 var lastEliminations = [];
@@ -385,6 +396,8 @@ function initBoard(H,W,LOS){
 		for (var j=0;j<H;j++) {
 			board.blockId[i][j] = EMPTY_BLOCK;
 			board.isPowerUp[i][j] = 0;
+			if(i == 0 || j == 0 || i == board.W-1 || j == board.H-1)
+				board.blockId[i][j] = SIDE_WALL;
 		}
 	}
 }
@@ -898,7 +911,6 @@ function drawLaser(gfx, time,duration,isHorizontal, from, to) {
 	gfx.strokeStyle = '#F00';
 	var middle = from + Math.abs(to - from)/2
 	var dd = Math.abs(to - from)/2 * Math.min(1,progression/LASER_PHASE1);
-	console.log(isHorizontal);
 	gfx.beginPath();
 	if(isHorizontal) {
 		gfx.moveTo(0,middle+dd);
@@ -1234,4 +1246,4 @@ window.onresize = function(){
 };
 
 
-setInterval(updatePosition, 200);
+setInterval(updatePosition, 500);
