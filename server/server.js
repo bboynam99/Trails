@@ -664,7 +664,7 @@ function getUnusedColor() {
 
 /** Launch game **/
 setInterval(gameloop, 1000/15);
-setInterval(sendUpdatesBoard, 1000 / 15);
+setInterval(sendUpdatesBoard, 1000 / 10);
 setInterval(sendUpdatesPlayers, 1000 / 15);
 setInterval(checkHeartBeat, 2000);
 setInterval(checkSync, 500); // security function
