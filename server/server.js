@@ -135,9 +135,7 @@ io.on('connection', function (socket) {
 	
 	socket.on('respawnRequest', function () {
 		if(player.isDead) {
-			player.desyncCounter = 0;
 			var spawnPosition = findGoodSpawn();
-			player.hasReceivedMvYet = false;
 			player.x = spawnPosition[0];
 			player.y = spawnPosition[1];
 			player.lastX = spawnPosition[0];
@@ -177,6 +175,7 @@ spawningQueue.setSpawnLogic(function(p) {
 	board.colorsLUT[p.blockId] = p.hue;
 	p.isDead = false;
 	p.lastHeartbeat = Date.now();
+	abilityManager.aggregatePowerUp(p,true);  // refresh passive values
 	sockets[p.id].emit('playerSpawn',{ // the player data
 		id: p.blockId,
 		x: p.x,
@@ -189,13 +188,15 @@ spawningQueue.setSpawnLogic(function(p) {
 		pts: p.pts,
 		dpts: p.dpts,
 		lpr: p.lpr,
-		maxCooldown: TELE_COOLDOWN,
-		teleportDist: TELE_DISTANCE
+		maxCooldown: p.maxCooldown,
+		teleportDist: p.teleportDist,
+		lastDeltaPts: p.dpts
 	}, { // the board
 		boardW:board.W,
 		boardH:board.H,
 		LOS:PLAYER_LOS_RANGE
 	});
+		
 });
 spawningQueue.setCountPlayersOnboard(function() {
 	return users.filter(function(u) {return !u.isDead && sockets[u.id].connected}).length;

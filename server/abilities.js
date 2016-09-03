@@ -355,7 +355,7 @@ const BULLDZR_CLEARING_DURATION = 0.50; // the fraction on the CD that the effec
 
 // ability related functions:
 
-function aggregatePowerUp(player) {	
+function aggregatePowerUp(player, skipClientUpdate) {
 	// update ability based on the totals computed
 	var sum = player.slotsAxis.reduce((prev, curr) => prev + Math.abs(curr),0);
 	//console.log('player has ' + sum + ' PUs.');
@@ -392,10 +392,12 @@ function aggregatePowerUp(player) {
 	if(player.specialAbility && player.specialAbility.afterCacheStatsLogic)
 		player.specialAbility.afterCacheStatsLogic(player);
 	
-	sockets[player.id].emit('newVals', {
-		maxCooldown: player.maxCooldown,
-		dpts: player.dpts,
-		lpr: player.lpr,
-		teleportDist: player.teleportDist
-	});
+	if(!skipClientUpdate){
+		sockets[player.id].emit('newVals', {
+			maxCooldown: player.maxCooldown,
+			dpts: player.dpts,
+			lpr: player.lpr,
+			teleportDist: player.teleportDist
+		});
+	}
 }

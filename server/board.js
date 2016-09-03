@@ -141,6 +141,10 @@ function killPlayer(p, reason, message) {
 		p.lpr = DEFAULT_LOSING_POINTS_RATIO;
 		p.bonusSizeCache = 0;
 		p.phase = null;
+		p.slotsAxis = Array.apply(null, Array(NUM_AXIS)).map(Number.prototype.valueOf,0);
+		p.specialAbility = null;
+		p.desyncCounter = 0;
+		p.hasReceivedMvYet = false;
 		
 		for (var i=0;i<NUM_AXIS;i++)
 			p.slotsAxis[i] = 0;

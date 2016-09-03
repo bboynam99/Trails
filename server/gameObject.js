@@ -134,7 +134,7 @@ function updateBlackHole(obj, dt) {
 		// TODO: align every player's X and Y
 	} else {
 		users.forEach(function(p) {
-			if(!p.isDead) {
+			if(!p.isDead && p.phase == null) {
 				var dx = (obj.data.x - p.x);
 				var dy = (obj.data.y - p.y);
 				var dist = Math.sqrt(dx*dx+dy*dy);

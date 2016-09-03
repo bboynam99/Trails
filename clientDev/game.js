@@ -33,7 +33,6 @@ Game.prototype.handleNetwork = function(socket) {
 			exp: 2.25,
 			id: newPlayer.id
 		});*/
-
 	});
 	
 	socket.on('newVals', function (cts) {
