@@ -10,10 +10,11 @@ module.exports = {
 	createDoomsdayPhase,
 	createBldzrBlade,
 	createInvisPhase,
-	createAirBags
+	createAirBags,
+	createC4
 };
 
-var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5; INVIS_ID = 6; AIRBAG_ID = 7;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5; INVIS_ID = 6; AIRBAG_ID = 7; C4_ID = 8;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -454,5 +455,20 @@ function createAirBags(creator, duration) { // we do not keep a handle on this. 
 			data: {creator:creator}
 		};
 		sendNewObject(newAirBags);
+	}
+}
+
+//
+// C4
+//
+function createC4(creator, duration) { // we do not keep a handle on this. Only the client needs to see it.
+	if(creator) {
+		var newC4 = {
+			type: C4_ID,
+			isVisibleByPlayer: isSimpleObjectWithinRange,
+			toPlayerObject: function(){return {type: C4_ID, id: creator.blockId, exp: duration}},
+			data: {creator:creator}
+		};
+		sendNewObject(newC4);
 	}
 }

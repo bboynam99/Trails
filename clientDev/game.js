@@ -28,7 +28,7 @@ Game.prototype.handleNetwork = function(socket) {
 		socket.emit('myNameIs', playerName);		
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
-			type: 6,
+			type: 8,
 			dt:0,
 			exp: 2.0,
 			id: newPlayer.id
@@ -211,7 +211,8 @@ Game.prototype.handleLogic = function() {
 	if (otherPlayers)
 		otherPlayers.forEach( function(o) {
 			if (movePlayer(o, dt))
-				board.blockId[o.lastPos[0]][o.lastPos[1]] = o.hue; // gives a smooth display
+				if(o.lastPos[0] > 0 && o.lastPos[0] < board.W && o.lastPos[1] > 0 && o.lastPos[1] < board.H)
+					board.blockId[o.lastPos[0]][o.lastPos[1]] = o.hue; // gives a smooth display
 		});
 	// update cooldown
 	player.cooldown = Math.max(0, player.cooldown - dt);
@@ -896,6 +897,22 @@ function drawGameObjects(gfx) {
 						gfx.arc(coords[0],coords[1]+coords[3],BLOCK_TO_PIXELS,0,1.5*Math.PI);
 						gfx.fill();
 						gfx.stroke();
+				}
+			break;
+			case 8: // C4
+				var p = getPlayerFromId(l.id);
+				if(p) {
+						gfx.lineWidth = 6;
+						
+						for (var i=0;i<3;i++) {
+							gfx.fillStyle =  'rgba('+getRandomInt(230,255)+', '+(getRandomInt(90,255))+', '+(getRandomInt(0,50))+', 0.75)';
+							gfx.strokeStyle =  'rgba('+getRandomInt(230,255)+', '+(getRandomInt(0,255))+', '+(getRandomInt(0,15))+', 1.0)';
+							coords = getBlocDrawCoordinates(p.x,p.y,HALF_BLOCK_SIZE_DISPLAY);
+							gfx.beginPath();
+							gfx.arc(coords[0]+getRandomInt(-1*HALF_BLOCK_SIZE_DISPLAY,BLOCK_TO_PIXELS),coords[1]+getRandomInt(-1*HALF_BLOCK_SIZE_DISPLAY,BLOCK_TO_PIXELS),HALF_BLOCK_SIZE_DISPLAY*getRandomInt(1,6),0,2*Math.PI);
+							gfx.fill();
+							gfx.stroke();
+						}
 				}
 			break;
 			

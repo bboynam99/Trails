@@ -89,6 +89,7 @@ var abilities = [
 			if(p.cooldown > 0)
 				return false; // kill player
 				
+			objects.createC4(p, 0.75);
 			b.triggerCooldown(p,C4_CD);
 			b.clearAroundPoint(x,y,6);
 			sockets[p.id].emit('trCd', C4_CD);
