@@ -28,9 +28,9 @@ Game.prototype.handleNetwork = function(socket) {
 		socket.emit('myNameIs', playerName);		
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
-			type: 5,
+			type: 6,
 			dt:0,
-			exp: 2.25,
+			exp: 2.0,
 			id: newPlayer.id
 		});*/
 	});
@@ -729,11 +729,6 @@ function updateGameObjects(dt) {
 	for(var i=gameObjects.length-1;i>=0;i--) {
 		var l = gameObjects[i];
 		switch(l.type){
-			case 1: // Link
-				l.dt += dt;
-				if(l.dt >= l.exp)
-					gameObjects.splice(i, 1);
-				break;
 			case 2: // Black hole
 				l.dt += dt;
 				if(l.dt >= l.exp)
@@ -754,7 +749,7 @@ function updateGameObjects(dt) {
 				if(l.dt >= l.exp + LASER_PHASE3)
 					gameObjects.splice(i, 1);
 				break;
-			case 5: // buldoser blade
+			default: // just add time until it expires: default behavior
 				l.dt += dt;
 				if(l.dt >= l.exp)
 					gameObjects.splice(i, 1);
@@ -887,6 +882,23 @@ function drawGameObjects(gfx) {
 					}
 				}
 			break;
+			case 7: // AirBags
+				var p = getPlayerFromId(l.id);
+				if(p) {
+						gfx.lineWidth = 2;
+						gfx.fillStyle =  'rgba(200, 200, 200, 0.5)';
+						gfx.strokeStyle =  '#000';
+						coords = getBlocDrawCoordinates(p.x,p.y,BLOCK_TO_PIXELS);
+						gfx.beginPath();
+						gfx.arc(coords[0],coords[1],BLOCK_TO_PIXELS,.5*Math.PI,0);
+						gfx.arc(coords[0]+coords[2],coords[1],BLOCK_TO_PIXELS,Math.PI,0.5*Math.PI);
+						gfx.arc(coords[0]+coords[2],coords[1]+coords[3],BLOCK_TO_PIXELS,1.5*Math.PI,Math.PI);
+						gfx.arc(coords[0],coords[1]+coords[3],BLOCK_TO_PIXELS,0,1.5*Math.PI);
+						gfx.fill();
+						gfx.stroke();
+				}
+			break;
+			
 		}
 		
 	});
@@ -1191,7 +1203,7 @@ function applyKeyboardDirectionLogic(key) {
 		if(lastDirectionPressed == NO_KEY) {
 			lastDirectionPressed = key;
 			updateTurnTargetPosition();
-		} else {
+		} else if(lastDirectionPressed != key) {
 			comboDirectionPressed = key;
 		}
 	}

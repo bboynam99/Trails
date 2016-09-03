@@ -111,10 +111,11 @@ var abilities = [
 		}
 	},
 	{
-		name: 'Air Bags',
+		name: 'Points Powered Air Bags',
 		description: 'Crashing into a wall will cause you to lose some points instead of eliminating you.',
 		recipe: [-2,-2,1], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onPlayerWallHit: function(x,y,p) {
+			objects.createAirBags(p, 0.75);
 			b.clearAroundPoint(x,y,1);
 			p.pts -= Math.max(250,p.pts*.15);
 			return true;
