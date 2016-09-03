@@ -150,11 +150,11 @@ io.on('connection', function (socket) {
 		}
     });
 	socket.on('teleport', function(x,y,dx,dy) {
-		if(x == null || !typeof x === 'number' //validation
+		/*if(player.phase == null && (x == null || !typeof x === 'number' //validation
 			|| y == null || !typeof y === 'number'
 			|| dx == null || !typeof dx === 'number'
-			|| dx == null || !typeof dy === 'number')
-			return;
+			|| dx == null || !typeof dy === 'number'))
+			return;*/
 			
 		if(player.cooldown > 1) { // is CD ready? I hope so!
 			b.killPlayer(player, 'used a powerup while still ' + player.cooldown + 's remain on CD', 'You were out of sync with the server :(');
@@ -326,10 +326,10 @@ function sendUpdatesBoard() {
 				}
 				
 				if(losX1-losX0 >= 0 && losY1-losY0 > 0){ // sometimes players are outside, but not dead yet (not sure why)
-					for (var i=0;i<losX1-losX0;i++) {
-						for (var j=0;j<losY1-losY0;j++) {
+					for (var i=losX0;i<=losX1;i++) {
+						for (var j=losY0;j<=losY1;j++) {
 							// find the color code
-							var id = boardToUse.blockId[i+losX0][j+losY0];
+							var id = boardToUse.blockId[i][j];
 							var code;
 							if(id == B_EMPTY) {
 								code = EMPTY_BLOCK;
@@ -561,8 +561,8 @@ function findGoodSpawn() {
 
 function spawnPowerUps() {
 	if(board.numPowerUpsOnBoard < NUM_POWERUPS_ONBOARD) {
-		var x = getRandomInt(1,board.W - 2); // cannot spawn on borders
-		var y = getRandomInt(1,board.H - 2);
+		var x = getRandomInt(1,BOARD_W - 2); // cannot spawn on borders
+		var y = getRandomInt(1,BOARD_H - 2);
 		if(board.blockId[x][y] == B_EMPTY && !board.isPowerUp[x][y] && !playerBoard[x][y]) {
 			board.isPowerUp[x][y] = getRandomInt(1,MAX_POWERUP_ID);
 			board.numPowerUpsOnBoard++;

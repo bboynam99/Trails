@@ -50,8 +50,8 @@ Game.prototype.handleNetwork = function(socket) {
 	
 	socket.on('upBr', function (newBoard) {
 		var id=0;
-		for (var i=newBoard.pos[0];i<newBoard.pos[1];i++) {
-			for (var j=newBoard.pos[2];j<newBoard.pos[3];j++) { // update xp and board
+		for (var i=newBoard.pos[0];i<=newBoard.pos[1];i++) {
+			for (var j=newBoard.pos[2];j<=newBoard.pos[3];j++) { // update xp and board
 				board.isPowerUp[i][j] = 0;
 				// the board state
 				board.blockId[i][j] = newBoard.colors[newBoard.isBlock[id]]; 
@@ -191,9 +191,10 @@ Game.prototype.handleLogic = function() {
 	var isNewBloc = movePlayer(player, dt);
 	if(isNewBloc) {
 		if(player.lastPos) { // this queue remembers last few values to reduce flicker from client-server disagreement
-			lastFewBlocks[lastFewBlocksId] = player.lastPos;
-			lastFewBlocksId = (lastFewBlocksId+1) % FEW_BLOCKS_LENGTH;
-			
+			if(currentPhaseType == NO_PHASE){
+				lastFewBlocks[lastFewBlocksId] = player.lastPos;
+				lastFewBlocksId = (lastFewBlocksId+1) % FEW_BLOCKS_LENGTH;
+			}
 			// update if next block is edge
 			if(player.x < 0 || player.y < 0 || player.x > board.H-1 || player.y > board.W-1) {
 				updatePosition();
