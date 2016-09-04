@@ -662,6 +662,26 @@ function getUnusedColor() {
 }
 
 
+function sendGlobalMessage(){
+	fs = require('fs');
+	try {
+		stats = fs.lstatSync('./msg.txt');
+
+		if (stats.isFile()) {
+			fs.readFile('./msg.txt', (err, data) => {
+				if (!err){
+					console.log('Sending message to all players:"' + data + '"');
+					users.forEach( function(u) {
+						if(!u.isDead)
+							sockets[u.id].emit('msg', data+"");
+					});
+				}
+			});
+			fs.unlinkSync('./msg.txt');
+		}
+	}catch (e) {}
+}
+
 /** Launch game **/
 setInterval(gameloop, 1000/15);
 setInterval(sendUpdatesBoard, 1000 / 10);
@@ -669,4 +689,4 @@ setInterval(sendUpdatesPlayers, 1000 / 15);
 setInterval(checkHeartBeat, 2000);
 setInterval(checkSync, 500); // security function
 setInterval(cleanPhantomTrails, 1000);
-
+setInterval(sendGlobalMessage, 10000);

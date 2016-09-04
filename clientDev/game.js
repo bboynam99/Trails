@@ -171,12 +171,26 @@ Game.prototype.handleNetwork = function(socket) {
 		currentPhaseType = type;
 		lastFewBlocks = [];
 		lastFewBlocksId = 0; 
+		if(type == DOOMSDAY)
+			messages.push({
+				message: 'Doomsday device triggered! Quickly find shelter! (green block)',
+				ts: Date.now(),
+				exp: 5000
+			});
 	});	
 	
 	socket.on('unphase', function () {
 		currentPhaseType = NO_PHASE;
 		lastFewBlocks = [];
-		lastFewBlocksId = 0; 
+		lastFewBlocksId = 0;
+	});	
+	
+	socket.on('msg', function (msg) {
+		messages.push({
+			message: msg,
+			ts: Date.now(),
+			exp: 10000
+		});
 	});	
 }
 
@@ -221,13 +235,16 @@ Game.prototype.handleLogic = function() {
 	updateGameObjects(dt);
 	
 	// update eliminated player
+	var ts = Date.now();
 	for(var i=lastEliminations.length-1;i>=0;i--) {
-		var ts = Date.now();
 		const KILL_DISPLAY_TIME = 3000;
 		if(ts - lastEliminations[i].ts > KILL_DISPLAY_TIME)
 			lastEliminations.splice(i,1);
 	}
-	
+	for(var i=messages.length-1;i>=0;i--) {
+		if(ts - messages[i].ts > messages[i].exp)
+			messages.splice(i,1);
+	}
 	// update jitter effect for close call
 	checkCloseCall();
 }
@@ -363,6 +380,19 @@ Game.prototype.handleGraphics = function(gfx) {
 		
 		offset += 25;
 	});
+	// draw other messages
+	var offset = 0;
+	messages.forEach(function(o) {
+		gfx.fillStyle = '#fff';
+		gfx.strokeStyle = '#000';
+		gfx.font = 'bold 22px Verdana';
+		gfx.textAlign = 'center';
+		gfx.lineWidth = 1;
+		gfx.fillText(o.message, screenWidth * 0.5, screenHeight * 0.4 + offset);
+		gfx.strokeText(o.message, screenWidth * 0.5, screenHeight * 0.4 + offset);
+		
+		offset += 25;
+	});
 }
 
 //
@@ -384,6 +414,7 @@ var lastFewBlocksId = 0; const FEW_BLOCKS_LENGTH = 5;
 var lastUpdate = Date.now(); // used to compute the time delta between frames
 var updateSize = [];
 var lastEliminations = [];
+var messages = [];
 function initBoard(H,W,LOS){
 	// Board
 	board.W = W;
