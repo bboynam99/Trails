@@ -123,6 +123,11 @@ canvas {
     font-weight: bold;
 	text-align: center;
 }
+@media screen and (max-width: 800px) {
+    .leaderboard {
+        display: none;
+    }
+}
 
 .leaderboard h1 {
     font-size: 25px;
