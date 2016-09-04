@@ -28,10 +28,9 @@ Game.prototype.handleNetwork = function(socket) {
 		socket.emit('myNameIs', playerName);		
 		// THIS IS FOR TESTING ONLY:
 		/*gameObjects.push({
-			type: 8,
+			type: 9,
 			dt:0,
-			exp: 2.0,
-			id: newPlayer.id
+			exp: 0.5
 		});*/
 	});
 	
@@ -946,7 +945,11 @@ function drawGameObjects(gfx) {
 						}
 				}
 			break;
-			
+			case 9: // EMP
+				var progress = l.dt / l.exp;
+				gfx.fillStyle =  'hsla(185, 100%, '+Math.round(50+progress*50)+'%, '+(1-progress)+')'
+				gfx.fillRect(0, 0, screenWidth, screenHeight);
+			break;
 		}
 		
 	});

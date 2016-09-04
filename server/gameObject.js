@@ -11,10 +11,11 @@ module.exports = {
 	createBldzrBlade,
 	createInvisPhase,
 	createAirBags,
-	createC4
+	createC4,
+	createEMP
 };
 
-var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5; INVIS_ID = 6; AIRBAG_ID = 7; C4_ID = 8;
+var LINK_ID=1, BKHL_ID=2; LZR_ID=3; DMSDY_ID = 4; BLDZR_ID = 5; INVIS_ID = 6; AIRBAG_ID = 7; C4_ID = 8; EMP_ID = 9;
 var gameObjects = []; // gameObjects contains all objects on board.It is an array of a structure.
 
 function updateLogic(dt) { // update every object's state, update functions may send out update packets
@@ -470,5 +471,20 @@ function createC4(creator, duration) { // we do not keep a handle on this. Only 
 			data: {creator:creator}
 		};
 		sendNewObject(newC4);
+	}
+}
+
+//
+// EMP
+//
+function createEMP(creator, duration) { // we do not keep a handle on this. Only the client needs to see it.
+	if(creator) {
+		var newEMP = {
+			type: EMP_ID,
+			isVisibleByPlayer: function(){return true;},
+			toPlayerObject: function(){return {type: EMP_ID, id: creator.blockId, exp: duration}},
+			data: {creator:creator}
+		};
+		sendNewObject(newEMP);
 	}
 }

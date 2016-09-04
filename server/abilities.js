@@ -175,12 +175,13 @@ var abilities = [
 	},
 	{
 		name: 'E.M.P.',
-		description: 'Clears the entire map (20 second cooldown). Replaces teleport.',
+		description: 'Clears the entire map (15 second cooldown). Replaces teleport.',
 		recipe: [0,-3,0], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		teleportOverride: function(p) {
-			b.clearEntireBoard(); // TODO: add a fun visual effect
-			b.triggerCooldown(p, 20);
-			sockets[p.id].emit('trCd', 20);
+			objects.createEMP(p, 0.5);
+			b.clearEntireBoard();
+			b.triggerCooldown(p, 15);
+			sockets[p.id].emit('trCd', 15);
 		}
 	},
 	{
