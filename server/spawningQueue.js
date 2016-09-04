@@ -7,7 +7,7 @@ module.exports = {
 }
 
 
-var MAX_PLAYERS = 40;
+var MAX_PLAYERS = 25;
 var queue = [];
 var spawnlogic;
 var countPlayersOnboard;
