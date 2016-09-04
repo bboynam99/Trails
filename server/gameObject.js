@@ -315,7 +315,7 @@ function doomsdayReplayLine(x0, y0, x1, y1, p) {
 			if(phasedBoard[x1][y1] == DMSDY_EXIT) {
 				exitDoomsdayPhase(p,x0,y0);
 				return;
-			} else if(p.phase.data.dt > 1.0 && phasedBoard[x1][y1] == B_BORDERS) { // small delay before killing ppl
+			} else if(p.phase.data.dt > 1.3 && phasedBoard[x1][y1] == B_BORDERS) { // small delay before killing ppl
 				b.killPlayer(p,'crashed while inside the doomsday phase', 'You crashed into a wall!');
 				return;
 			}
@@ -344,7 +344,7 @@ function createDoomsdayPhaseMap() {
 				phaseBoard.blockId[i][j] = B_BORDERS;
 			else if((i+offset) % 55 == 0 && (j+offset) % 55 == 0)
 				phaseBoard.blockId[i][j] = DMSDY_EXIT;
-			else if (Math.random() < 0.03)
+			else if (Math.random() < 0.02)
 				phaseBoard.blockId[i][j] = B_BORDERS
 		}
 	}
