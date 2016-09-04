@@ -662,7 +662,7 @@ function getUnusedColor() {
 }
 
 
-function sendGlobalMessage(){
+function sendGlobalMessage() {
 	fs = require('fs');
 	try {
 		stats = fs.lstatSync('./msg.txt');

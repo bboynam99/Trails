@@ -1182,18 +1182,15 @@ var NO_KEY = -1;
 
 var TAP_CENTER_REL_DIST = 0.05;
 function bindClickTap(c) {
-	c.addEventListener('click', function(event) {
+	function handleClick(x,y) {
 		// figure out where the tap happened
 		var w2 = screenWidth/2,
 			h2 = screenHeight/2;
-		var rx = event.x-w2,
-			ry = h2-event.y;
-		if(Math.sqrt(rx*rx+ry*ry) <= screenWidth * TAP_CENTER_REL_DIST)
-		{
-			if(gameOver) // SPACE BAR LOGIC
-				socket.emit('respawnRequest', playerName);
-			else if(!gameOver)
-				useAbility();
+		var rx = x-w2,
+			ry = h2-y;
+			
+		if(Math.sqrt(rx*rx+ry*ry) <= screenWidth * TAP_CENTER_REL_DIST) {
+			useAbility();
 			return;
 		}
 		
@@ -1209,6 +1206,17 @@ function bindClickTap(c) {
 			key = KEY_UP[0];
 
 		applyKeyboardDirectionLogic(key);
+	}
+	
+	c.addEventListener('mousedown', function(event){
+		if(gameOver){ // SPACE BAR LOGIC
+			socket.emit('respawnRequest', playerName);
+			return;
+		} else
+			handleClick(event.x,event.y);
+	}, false);
+	c.addEventListener('touchmove', function(event){
+		handleClick(event.touches[0].clientX,event.touches[0].clientY);
 	}, false);
 }
 
