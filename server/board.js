@@ -181,6 +181,11 @@ function clearEntireBoard() {
 }
 
 function teleportPlayer(player,x,y,cd) {
+	if(x < 0 || y < 0 || x > board.W-1 || y > board.H-1)
+		return;
+	if(player.lastX < 0 || player.lastY < 0 || player.lastX > board.W-1 || player.lastY > board.H-1)
+		return;
+	
 	var originalX = Math.round(player.x), originalY = Math.round(player.y);
 	player.x = x;
 	player.y = y;
