@@ -116,7 +116,7 @@ function hasCrashedInto(crashee, crasher, customMsg) {
 	if(!crashee || crashee.isDead)
 		return;
 	
-	crashee.pts += crasher.pts * 0.35;
+	crashee.pts += crasher.pts * 0.80;
 	for (var i=1;i<board.W-1;i++) { // clear crashee's trail
 		for (var j=1;j<board.H-1;j++) {
 			if(Math.abs(board.blockId[i][j]) == crashee.blockId) {
