@@ -281,7 +281,7 @@ function updateDoomsdayPhase(obj,dt) {
 			b.hasCrashedInto(creator, inPhase[0], 'You\'ve been blasted into pieces by ' + creator.name + ' \'s Doomsday device.');
 			creator.slots = Array.apply(null, Array(PU_SLOTS)).map(Number.prototype.valueOf,0);
 			creator.lastSlotFilled = 0;
-			a.aggregatePowerUp(creator);
+			p.phase.data.creatorGetsOutLogic();
 		} else {
 			b.killPlayer(inPhase[0], 'was the last one in the doomsday phase.', 'You\'ve been blasted into pieces by the Doomsday device.')
 		}
