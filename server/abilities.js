@@ -24,7 +24,6 @@ var abilities = [
 		description: 'After teleporting, you channel a ray on a nearby player in attempt to steal a large number of points.',
 		recipe: [-1,2,-2], // Fast vs Greedy  ||  Sneaky vs Destructive  || Solitary vs Hostile
 		onTeleportLanding: function(x,y,p) {
-			const POINTS_VAC_STEAL_RATIO = 0.35; // the ratio of points stolen
 			var nearestPlayer = b.findNearestPlayer(x,y,8,p);
 			
 			if(nearestPlayer != null)  // create link if possible
@@ -355,6 +354,7 @@ var abilities = [
 	}
 ];
 const BULLDZR_CLEARING_DURATION = 0.50; // the fraction on the CD that the effect lasts
+const POINTS_VAC_STEAL_RATIO = 0.35; // the ratio of points stolen
 
 // ability related functions:
 
