@@ -23,7 +23,7 @@ function startGame() {
 	document.getElementById('cvs').focus()
 }
 
-// check if nick is valid alphanumeric characters (and underscores)
+// ccheck if nick is valid alphanumeric characters (and underscores)
 function validNick() {
     var regex = /^\w[ \w]{0,14}$/;
     return regex.exec(playerNameInput.value) !== null;
